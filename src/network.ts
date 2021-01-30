@@ -20,7 +20,7 @@ interface Message {
     sender: SimpleNode;
     reciever: SimpleNode;
     type: MessageType;
-    promise: string;
+    promiseId: string;
     data: any;
 }
 
@@ -40,8 +40,10 @@ export default class Network {
         this.address = address || '127.0.0.1';
         this.port = port || 50000;
 
+        // Create the socket
         this.socket = dgram.createSocket('udp4');
 
+        // Add a message handler
         this.socket.on('message', (msg, rinfo) => this.messageHandler(msg, rinfo));
     }
 
@@ -51,40 +53,43 @@ export default class Network {
             sender,
             reciever,
             type,
-            promise,
+            promiseId,
             data,
         } = message;
 
+        // Sender cannot be the current user
         if (rinfo.address === this.address && rinfo.port === this.port) return;
-        if (reciever.address !== this.address || reciever.port !== this.port) return;
         if (rinfo.address !== sender.address || rinfo.port !== sender.port) return;
 
+        // Reciever must be the current user
+        if (reciever.address !== this.address || reciever.port !== this.port) return;
+
         console.log('------------------------------------------------');
-        console.log(`[${this.node.id}] <${type} - ${promise}> from #${sender.id}`);
+        console.log(`[${this.node.id}] <${type} - ${promiseId}> from #${sender.id}`);
 
         let responseData: any;
 
         switch (type) {
         case 'ping':
-            responseData = { promise: true, ping: true };
+            responseData = { result: true, ping: true };
             break;
 
         case 'response':
-            this.respondToPromise(promise, data);
+            this.respondToPromise(promiseId, data);
             break;
 
         case 'message':
             console.log(`--> ${data.message}`);
-            responseData = { promise: true };
+            responseData = { result: true };
             break;
 
         default:
             console.log('Unknown message type!');
-            responseData = { promise: false, error: 'Unknown message type!' };
+            responseData = { result: false, error: 'Unknown message type!' };
             break;
         }
 
-        if (type !== 'response') await this.send(sender, 'response', promise, responseData);
+        if (type !== 'response') await this.send(sender, 'response', promiseId, responseData);
         console.log('------------------------------------------------');
     }
 
@@ -106,9 +111,17 @@ export default class Network {
         });
     }
 
-    async disconnect() {
-        await new Promise((resolve) => {
-            this.socket.close(resolve);
+    async disconnect(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const fallback = setTimeout(() => {
+                reject(new Error('Disconnect timed out.'));
+            });
+
+            this.socket.close(() => {
+                clearTimeout(fallback);
+
+                resolve();
+            });
         });
     }
 
@@ -118,7 +131,7 @@ export default class Network {
         promise: ResponsePromise | string,
         data?: any,
     ) {
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
             let outgoingPromise: string;
 
             if (typeof promise === 'string') {
@@ -133,7 +146,7 @@ export default class Network {
                 sender: this.node.encapsulateSelf(),
                 reciever,
                 type,
-                promise: outgoingPromise,
+                promiseId: outgoingPromise,
                 data,
             };
 
@@ -150,7 +163,7 @@ export default class Network {
     }
 
     respondToPromise(promiseId: string, data: any) {
-        if (data.promise) {
+        if (data.result) {
             this.promises[promiseId].resolve(data);
         } else {
             this.promises[promiseId].reject(data.error);
@@ -158,8 +171,8 @@ export default class Network {
         delete this.promises[promiseId];
     }
 
-    async flush() {
-        await new Promise((resolve) => {
+    async flush(): Promise<void> {
+        await new Promise<void>((resolve) => {
             Object.keys(this.promises).forEach((promise) => delete this.promises[promise]);
             resolve();
         });
