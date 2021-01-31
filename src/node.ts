@@ -52,6 +52,12 @@ export default class Node {
         });
     }
 
+    async message(target: SimpleNode, message: String) {
+        return new Promise((resolve, reject) => {
+            this.network.send(target, 'message', { resolve, reject }, { message });
+        });
+    }
+
     async terminate() {
         console.log('Terminating the node...');
         await this.network.disconnect();
