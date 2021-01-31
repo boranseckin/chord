@@ -8,14 +8,17 @@ const rl = readline.createInterface({
     prompt: 'node> ',
 });
 
-const node = new Node(undefined, 50000, () => {
+const address = process.argv[2] || undefined;
+const port = Number(process.argv[3]) || undefined;
+
+const node = new Node(address, port, () => {
     console.log('\x1b[0f');
     rl.prompt();
 });
 
 rl.on('line', async (line) => {
-    const input = line.trim();
-    switch (input.split(' ')[0]) {
+    const input = line.trim().split(' ');
+    switch (input[0]) {
     case 'info':
         console.log(node.encapsulateSelf());
         break;
@@ -26,6 +29,14 @@ rl.on('line', async (line) => {
 
     case 'flush':
         await node.network.flush();
+        break;
+
+    case 'ping':
+        await node.ping({ id: 'N/A', address: input[1], port: Number(input[2]) });
+        break;
+
+    case 'msg':
+        await node.message({ id: 'N/A', address: input[1], port: Number(input[2]) }, input[3]);
         break;
 
     case 'clear':
