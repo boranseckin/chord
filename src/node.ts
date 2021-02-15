@@ -10,6 +10,7 @@ export interface SimpleNode {
 export default class Node {
     id: string;
     network: Network;
+    roster: SimpleNode[] = [];
 
     constructor(
         address?: string,
@@ -67,6 +68,54 @@ export default class Node {
                 reject,
             },
             { message });
+        });
+    }
+
+    async registerTo(target: SimpleNode) {
+        await new Promise((resolve, reject) => {
+            const fallback = setTimeout(
+                () => reject(new Error(`Register timed out for target ${target.address}:${target.port}.`)),
+                2000,
+            );
+
+            this.network.send(target, 'update', {
+                resolve: (data?: any) => {
+                    clearTimeout(fallback);
+                    resolve(data);
+                },
+                reject,
+            },
+            { update: 'add', node: this.encapsulateSelf() });
+        })
+        .then(() => {
+            this.roster.push(target);
+        })
+        .catch((error) => console.error(error));
+    }
+
+    async notifyOthers(update: String, node: SimpleNode) {
+        const outbound: Promise<any>[] = [];
+
+        this.roster.forEach((target) => {
+            if (target.id === node.id) return;
+
+            outbound.push(new Promise((resolve, reject) => {
+                this.network.send(target, 'update', { resolve, reject }, { update, node });
+            }));
+        });
+
+        return Promise.all(outbound);
+    }
+
+    sync() {
+        this.roster.forEach((node) => {
+            this.ping(node)
+                .then(() => {
+                    this.notifyOthers('add', node);
+                })
+                .catch(() => {
+                    this.notifyOthers('remove', node);
+                });
         });
     }
 

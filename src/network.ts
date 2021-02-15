@@ -14,7 +14,7 @@ interface ResponsePromise {
     reject: Function;
 }
 
-type MessageType = 'ping' | 'response' | 'message';
+type MessageType = 'ping' | 'response' | 'message' | 'update';
 
 interface Message {
     sender: SimpleNode;
@@ -64,8 +64,10 @@ export default class Network {
         // Reciever must be the current user
         if (reciever.address !== this.address || reciever.port !== this.port) return;
 
-        console.log('------------------------------------------------');
-        console.log(`[${this.node.id}] <${type} - ${promiseId}> from #${sender.id}`);
+        if (process.env.VERBOSE) {
+            console.log('------------------------------------------------');
+            console.log(`[${this.node.id}] <${type} - ${promiseId}> from #${sender.id}`);
+        }
 
         let responseData: any;
 
@@ -79,18 +81,39 @@ export default class Network {
             break;
 
         case 'message':
-            console.log(`--> ${data.message}`);
+            if (process.env.VERBOSE) console.log(`--> ${data.message}`);
+            responseData = { result: true };
+            break;
+
+        case 'update':
+            if (data.update === 'add') {
+                if (!this.node.roster.find((e) => e.id == data.node.id)) {
+                    this.node.ping(data.node)
+                        .then(() => {
+                            this.node.roster.push(data.node);
+                        })
+                        .catch((error) => console.error(error));
+                }
+            } else if (data.update === 'remove') {
+                this.node.ping(data.node)
+                    .then(() => {
+                        if (process.env.VERBOSE) console.error(`${data.node.id} is alive, not removing!`);
+                    })
+                    .catch(() => {
+                        this.node.roster = this.node.roster.filter((e) => e.id !== data.node.id);
+                    });
+            }
             responseData = { result: true };
             break;
 
         default:
-            console.log('Unknown message type!');
+            if (process.env.VERBOSE) console.log('Unknown message type!');
             responseData = { result: false, error: 'Unknown message type!' };
             break;
         }
 
         if (type !== 'response') await this.send(sender, 'response', promiseId, responseData);
-        console.log('------------------------------------------------');
+        if (process.env.VERBOSE) console.log('------------------------------------------------');
     }
 
     async connect(): Promise<NetworkInfo> {
