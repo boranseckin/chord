@@ -19,8 +19,36 @@ const node = new Node(address, port, () => {
 rl.on('line', async (line) => {
     const input = line.trim().split(' ');
     switch (input[0]) {
+    case 'add':
+        const addIndex = node.roster.findIndex((e) => e.id === input[1]);
+        if (addIndex !== -1) break;
+
+        node.roster.push({
+            id: input[1],
+            address: '127.0.0.1',
+            port: Number(input[2]),
+        });
+        break;
+
+    case 'remove':
+        node.roster.filter((e) => e.id !== input[1]);
+        break;
+
+    case 'reg':
+        await node.registerTo({
+            id: input[1],
+            address: '127.0.0.1',
+            port: Number(input[2]),
+        });
+        break;
+
+    case 'sync':
+        node.sync();
+        break;
+
     case 'info':
         console.log(node.encapsulateSelf());
+        console.log(node.roster);
         break;
 
     case 'que':
