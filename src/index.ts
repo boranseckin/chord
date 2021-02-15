@@ -32,11 +32,21 @@ rl.on('line', async (line) => {
         break;
 
     case 'ping':
-        await node.ping({ id: 'N/A', address: input[1], port: Number(input[2]) });
+        if (input[1] && input[2]) {
+            await node.ping({ id: 'N/A', address: input[1], port: Number(input[2]) })
+                .catch((error) => console.error(error));
+        } else {
+            console.log('Ping requires 2 arguments!');
+        }
         break;
 
     case 'msg':
-        await node.message({ id: 'N/A', address: input[1], port: Number(input[2]) }, input[3]);
+        if (input[1] && input[2] && input[3]) {
+            await node.message({ id: 'N/A', address: input[1], port: Number(input[2]) }, input[3])
+                .catch((error) => console.error(error));
+        } else {
+            console.log('Message requires 3 arguments!');
+        }
         break;
 
     case 'clear':
