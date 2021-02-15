@@ -2,7 +2,10 @@ const Node = require('../dist/node');
 const Network = require('../dist/network');
 const Utils = require('../dist/utils');
 
-let xNode, yNode;
+/** @type Node */
+let xNode;
+/** @type Node */
+let yNode;
 
 console.log = jest.fn()
 
@@ -21,8 +24,37 @@ beforeAll(async () => {
     })
 });
 
+describe('Sending Messages', () => {
+    test('sends message and gets response', async () => {
+        expect.assertions(4);
+
+        await xNode.message(yNode.encapsulateSelf(), 'This is node X!')
+            .then((res) => {
+                console.log(res)
+                expect(res).toEqual({ result: true })
+            })
+            .catch((err) => expect(err).toBeUndefined())
+
+        expect(messageSpy).toHaveBeenCalledTimes(2);
+        expect(respondSpy).toHaveBeenCalledWith(expect.any(String), { "result": true });
+        expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('sends message and gets no response', async () => {
+        expect.assertions(6);
+
+        await xNode.message({ id: '1111', address: '127.0.0.1', port: 5000 }, 'This is node X!')
+            .catch((error) => expect(error).toBeDefined());
+
+        expect(messageSpy).not.toHaveBeenCalled();
+        expect(respondSpy).not.toHaveBeenCalled();
+        expect(timeoutSpy).toHaveBeenCalledTimes(1);
+        expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 2000);
+        expect(clearTimeoutSpy).not.toHaveBeenCalled();
+    });
+});
+
 describe('Sending Pings', () => {
-    
     test('sends ping message and gets positive response', async () => {
         expect.assertions(5);
 
@@ -36,7 +68,7 @@ describe('Sending Pings', () => {
         expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
     });
 
-    test('sends ping message and gets negative response', async () => {
+    test('sends ping message and gets positive response with mocked respond', async () => {
         expect.assertions(1);
 
         const spy = jest.spyOn(Network.default.prototype, 'respondToPromise').mockImplementation((promiseId, data) => {
@@ -51,7 +83,7 @@ describe('Sending Pings', () => {
         spy.mockRestore();
     });
 
-    test('sends ping message and gets negative response 2', async () => {
+    test('sends ping message and gets positive response with mocked handler', async () => {
         expect.assertions(1);
 
         const spy = jest.spyOn(Network.default.prototype, 'messageHandler').mockImplementation(async (msg, rinfo) => {
