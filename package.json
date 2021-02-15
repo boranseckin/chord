@@ -13,7 +13,7 @@
     "start:watch": "nodemon",
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "pretest": "npm run lint",
+    "pretest": "npm run lint; npm run build",
     "test": "jest",
     "refresh": "rm -rf ./node_modules ./package-lock.json && npm install",
     "docs": "typedoc -out docs ./src"
