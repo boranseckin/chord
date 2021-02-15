@@ -22,8 +22,8 @@ export default class Node {
             .then(() => {
                 if (callback) callback();
             })
-            .catch((connErr) => {
-                console.error(connErr);
+            .catch((error) => {
+                throw new Error(error);
             });
     }
 
