@@ -8,14 +8,17 @@ const rl = readline.createInterface({
     prompt: 'node> ',
 });
 
-const node = new Node(undefined, 50000, () => {
-    console.log('\x1b[0f');
+const address = process.argv[2] || undefined;
+const port = Number(process.argv[3]) || undefined;
+
+const node = new Node(address, port, () => {
+    process.stdout.write('\u001b[2J\u001b[0;0H');
     rl.prompt();
 });
 
 rl.on('line', async (line) => {
-    const input = line.trim();
-    switch (input.split(' ')[0]) {
+    const input = line.trim().split(' ');
+    switch (input[0]) {
     case 'info':
         console.log(node.encapsulateSelf());
         break;
@@ -28,8 +31,26 @@ rl.on('line', async (line) => {
         await node.network.flush();
         break;
 
+    case 'ping':
+        if (input[1] && input[2]) {
+            await node.ping({ id: 'N/A', address: input[1], port: Number(input[2]) })
+                .catch((error) => console.error(error));
+        } else {
+            console.log('Ping requires 2 arguments!');
+        }
+        break;
+
+    case 'msg':
+        if (input[1] && input[2] && input[3]) {
+            await node.message({ id: 'N/A', address: input[1], port: Number(input[2]) }, input[3])
+                .catch((error) => console.error(error));
+        } else {
+            console.log('Message requires 3 arguments!');
+        }
+        break;
+
     case 'clear':
-        console.log('\x1b[0f');
+        process.stdout.write('\u001b[2J\u001b[0;0H');
         break;
 
     case 'exit':

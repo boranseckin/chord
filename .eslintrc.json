@@ -10,7 +10,8 @@
   "ignorePatterns": [
     "node_modules",
     "dist",
-    "bin"
+    "bin",
+    "tests"
   ],
   "globals": {
     "Atomics": "readonly",

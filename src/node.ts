@@ -22,8 +22,8 @@ export default class Node {
             .then(() => {
                 if (callback) callback();
             })
-            .catch((connErr) => {
-                console.error(connErr);
+            .catch((error) => {
+                throw new Error(error);
             });
     }
 
@@ -37,7 +37,36 @@ export default class Node {
 
     async ping(target: SimpleNode) {
         return new Promise((resolve, reject) => {
-            this.network.send(target, 'ping', { resolve, reject });
+            const fallback = setTimeout(
+                () => reject(new Error(`Ping timed out for target ${target.address}:${target.port}.`)),
+                2000,
+            );
+
+            this.network.send(target, 'ping', {
+                resolve: (data?: any) => {
+                    clearTimeout(fallback);
+                    resolve(data);
+                },
+                reject,
+            });
+        });
+    }
+
+    async message(target: SimpleNode, message: String) {
+        return new Promise((resolve, reject) => {
+            const fallback = setTimeout(
+                () => reject(new Error(`Message timed out for target ${target.address}:${target.port}.`)),
+                2000,
+            );
+
+            this.network.send(target, 'message', {
+                resolve: (data?: any) => {
+                    clearTimeout(fallback);
+                    resolve(data);
+                },
+                reject,
+            },
+            { message });
         });
     }
 
