@@ -43,7 +43,7 @@
     "lines-between-class-members": ["error", "always", { "exceptAfterSingleLine": true }],
     "no-console": ["off"],
     "no-shadow": "off",
-    "@typescript-eslint/no-shadow": "error",
+    "no-case-declarations": ["off"],
     "@typescript-eslint/no-unused-vars": [
       "error", { "argsIgnorePattern": "^_" }
     ],
