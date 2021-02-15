@@ -54,7 +54,19 @@ export default class Node {
 
     async message(target: SimpleNode, message: String) {
         return new Promise((resolve, reject) => {
-            this.network.send(target, 'message', { resolve, reject }, { message });
+            const fallback = setTimeout(
+                () => reject(new Error(`Message timed out for target ${target.address}:${target.port}.`)),
+                2000,
+            );
+
+            this.network.send(target, 'message', {
+                resolve: (data?: any) => {
+                    clearTimeout(fallback);
+                    resolve(data);
+                },
+                reject,
+            },
+            { message });
         });
     }
 
