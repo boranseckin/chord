@@ -159,7 +159,7 @@ export default class Network {
                     resolve();
                 },
             );
-        });
+        }).catch((error) => console.error(error));
     }
 
     respondToPromise(promiseId: string, data: any) {
