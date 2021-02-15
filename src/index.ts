@@ -12,7 +12,7 @@ const address = process.argv[2] || undefined;
 const port = Number(process.argv[3]) || undefined;
 
 const node = new Node(address, port, () => {
-    console.log('\x1b[0f');
+    process.stdout.write('\u001b[2J\u001b[0;0H');
     rl.prompt();
 });
 
@@ -40,7 +40,7 @@ rl.on('line', async (line) => {
         break;
 
     case 'clear':
-        console.log('\x1b[0f');
+        process.stdout.write('\u001b[2J\u001b[0;0H');
         break;
 
     case 'exit':
