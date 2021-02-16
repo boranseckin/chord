@@ -87,13 +87,13 @@ export default class Node {
             },
             { update: 'add', node: this.encapsulateSelf() });
         })
-        .then(() => {
-            this.roster.push(target);
-        })
-        .catch((error) => console.error(error));
+            .then(() => {
+                this.roster.push(target);
+            })
+            .catch((error) => console.error(error));
     }
 
-    async notifyOthers(update: String, node: SimpleNode) {
+    async notifyOthers(update: 'add' | 'remove', node: SimpleNode) {
         const outbound: Promise<any>[] = [];
 
         this.roster.forEach((target) => {
