@@ -2,22 +2,26 @@ import Network from './network';
 import { hash } from './utils';
 
 export interface SimpleNode {
-    id: string;
+    id: number;
+    hash: string;
     address: string;
     port: number;
 }
 
 export default class Node {
-    id: string;
+    id: number;
+    hash: string;
     network: Network;
     roster: SimpleNode[] = [];
 
     constructor(
+        id?: number,
         address?: string,
         port?: number,
         callback?: Function,
     ) {
-        this.id = hash(`${address}:${port}`).slice(10, 18).toUpperCase();
+        this.id = id || 0;
+        this.hash = hash(`${address}:${port}`).slice(10, 16).toUpperCase();
         this.network = new Network(this, address, port);
         this.network.connect()
             .then(() => {
@@ -31,6 +35,7 @@ export default class Node {
     encapsulateSelf(): SimpleNode {
         return {
             id: this.id,
+            hash: this.hash,
             address: this.network.address,
             port: this.network.port,
         };
@@ -97,7 +102,7 @@ export default class Node {
         const outbound: Promise<any>[] = [];
 
         this.roster.forEach((target) => {
-            if (target.id === node.id) return;
+            if (target.hash === node.hash) return;
 
             outbound.push(new Promise((resolve, reject) => {
                 this.network.send(target, 'update', { resolve, reject }, { update, node });

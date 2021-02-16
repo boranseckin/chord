@@ -8,10 +8,11 @@ const rl = readline.createInterface({
     prompt: 'node> ',
 });
 
-const address = process.argv[2] || undefined;
-const port = Number(process.argv[3]) || undefined;
+const id = Number(process.argv[2]) || undefined;
+const address = process.argv[3] || undefined;
+const port = Number(process.argv[4]) || undefined;
 
-const node = new Node(address, port, () => {
+const node = new Node(id, address, port, () => {
     process.stdout.write('\u001b[2J\u001b[0;0H');
     rl.prompt();
 });
@@ -20,25 +21,27 @@ rl.on('line', async (line) => {
     const input = line.trim().split(' ');
     switch (input[0]) {
     case 'add':
-        const addIndex = node.roster.findIndex((e) => e.id === input[1]);
+        const addIndex = node.roster.findIndex((e) => e.hash === input[1]);
         if (addIndex !== -1) break;
 
         node.roster.push({
-            id: input[1],
+            id: Number(input[1]),
+            hash: input[2],
             address: '127.0.0.1',
-            port: Number(input[2]),
+            port: Number(input[3]),
         });
         break;
 
     case 'remove':
-        node.roster.filter((e) => e.id !== input[1]);
+        node.roster.filter((e) => e.hash !== input[1]);
         break;
 
     case 'reg':
         await node.registerTo({
-            id: input[1],
+            id: Number(input[1]),
+            hash: input[2],
             address: '127.0.0.1',
-            port: Number(input[2]),
+            port: Number(input[3]),
         });
         break;
 
@@ -61,7 +64,12 @@ rl.on('line', async (line) => {
 
     case 'ping':
         if (input[1] && input[2]) {
-            await node.ping({ id: 'N/A', address: input[1], port: Number(input[2]) })
+            await node.ping({
+                id: -1,
+                hash: 'N/A',
+                address: input[1],
+                port: Number(input[2]),
+            })
                 .catch((error) => console.error(error));
         } else {
             console.log('Ping requires 2 arguments!');
@@ -70,7 +78,12 @@ rl.on('line', async (line) => {
 
     case 'msg':
         if (input[1] && input[2] && input[3]) {
-            await node.message({ id: 'N/A', address: input[1], port: Number(input[2]) }, input[3])
+            await node.message({
+                id: -1,
+                hash: 'N/A',
+                address: input[1],
+                port: Number(input[2]),
+            }, input[3])
                 .catch((error) => console.error(error));
         } else {
             console.log('Message requires 3 arguments!');

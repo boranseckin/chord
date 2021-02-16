@@ -14,7 +14,7 @@ interface ResponsePromise {
     reject: Function;
 }
 
-type MessageType = 'ping' | 'response' | 'message' | 'update';
+type MessageType = 'ping' | 'response' | 'message' | 'command' | 'update';
 
 interface Message {
     sender: SimpleNode;
@@ -64,10 +64,7 @@ export default class Network {
         // Reciever must be the current user
         if (reciever.address !== this.address || reciever.port !== this.port) return;
 
-        if (process.env.VERBOSE) {
-            console.log('------------------------------------------------');
-            console.log(`[${this.node.id}] <${type} - ${promiseId}> from #${sender.id}`);
-        }
+        if (process.env.VERBOSE) console.log(`[${this.node.id}] <${type} - ${promiseId}> from #${sender.id}`);
 
         let responseData: any;
 
@@ -76,18 +73,18 @@ export default class Network {
             responseData = { result: true, ping: true };
             break;
 
-        case 'response':
-            this.respondToPromise(promiseId, data);
-            break;
-
         case 'message':
             if (process.env.VERBOSE) console.log(`--> ${data.message}`);
             responseData = { result: true };
             break;
 
+        case 'response':
+            this.respondToPromise(promiseId, data);
+            break;
+
         case 'update':
             if (data.update === 'add') {
-                if (!this.node.roster.find((e) => e.id == data.node.id)) {
+                if (!this.node.roster.find((e) => e.id === data.node.id)) {
                     this.node.ping(data.node)
                         .then(() => {
                             this.node.roster.push(data.node);
@@ -113,7 +110,6 @@ export default class Network {
         }
 
         if (type !== 'response') await this.send(sender, 'response', promiseId, responseData);
-        if (process.env.VERBOSE) console.log('------------------------------------------------');
     }
 
     async connect(): Promise<NetworkInfo> {
