@@ -20,38 +20,22 @@ const node = new Node(id, address, port, () => {
 rl.on('line', async (line) => {
     const input = line.trim().split(' ');
     switch (input[0]) {
-    case 'add':
-        const addIndex = node.roster.findIndex((e) => e.hash === input[1]);
-        if (addIndex !== -1) break;
-
-        node.roster.push({
-            id: Number(input[1]),
-            hash: input[2],
-            address: '127.0.0.1',
-            port: Number(input[3]),
-        });
-        break;
-
-    case 'remove':
-        node.roster.filter((e) => e.hash !== input[1]);
-        break;
-
-    case 'reg':
-        await node.registerTo({
-            id: Number(input[1]),
-            hash: input[2],
-            address: '127.0.0.1',
-            port: Number(input[3]),
-        });
-        break;
-
-    case 'sync':
-        node.sync();
-        break;
-
     case 'info':
         console.log(node.encapsulateSelf());
-        console.log(node.roster);
+        console.log(node.predecessor);
+        console.log(node.fingerTable);
+        break;
+
+    case 'suc':
+        console.log(await node.execute('findSuccessor', node.encapsulateSelf(), Number(input[1])));
+        break;
+
+    case 'pre':
+        console.log(await node.execute('findPredecessor', node.encapsulateSelf(), Number(input[1])));
+        break;
+
+    case 'finger':
+        console.log(node.closestPrecedingFinger(Number(input[1])));
         break;
 
     case 'que':
