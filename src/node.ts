@@ -21,8 +21,11 @@ type Functions = (
     'getSuccessor' |
     'findSuccessor' |
     'getPredecessor' |
+    'setPredecessor' |
     'findPredecessor' |
-    'closestPrecedingFinger'
+    'closestPrecedingFinger' |
+    'updateFingerTable' |
+    'notify'
 );
 
 export default class Node {
@@ -31,6 +34,7 @@ export default class Node {
     network: Network;
     predecessor: SimpleNode;
     fingerTable = new Array<TableEntry>(M);
+    loop: ReturnType<typeof setInterval> | null = null;
 
     constructor(
         id?: number,
@@ -45,11 +49,12 @@ export default class Node {
 
         this.predecessor = flare || this.encapsulateSelf();
 
-        this.initFingerTable(flare);
-
         this.network.connect()
             .then(() => {
-                if (callback) callback();
+                this.join(flare)
+                    .then(() => {
+                        if (callback) callback();
+                    });
             })
             .catch((error) => {
                 throw new Error(error);
@@ -65,17 +70,96 @@ export default class Node {
         };
     }
 
-    initFingerTable(flare?: SimpleNode) {
+    async join(flare?: SimpleNode) {
+        await this.initFingerTable(flare);
+        this.startLoop();
+    }
+
+    async stabilize() {
+        const prime = await this.getPredecessor(this.fingerTable[0].node);
+        if (inRange(prime.id, this.id, this.fingerTable[0].node.id, 'none')) {
+            this.fingerTable[0].node = prime;
+        }
+
+        if (this.fingerTable[0].node.id !== this.id) {
+            await this.notify(this.encapsulateSelf(), this.fingerTable[0].node);
+        }
+    }
+
+    async notify(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
+        if (!executer || executer.id === this.id) {
+            if (inRange(node.id, this.predecessor.id, this.id, 'none')) {
+                this.predecessor = node;
+            }
+
+            return true;
+        }
+
+        return this.execute('notify', executer, node);
+    }
+
+    async fixFingers(index?: number) {
+        const i = index || Math.floor(Math.random() * M);
+        const node = await this.findSuccessor(this.fingerTable[i].interval[0]);
+        if (this.fingerTable[i].node.id !== node.id) {
+            console.log(`Finger Fixed: [${i}] ${this.fingerTable[i].node.id} -> ${node.id}`);
+            this.fingerTable[i].node = node;
+        }
+    }
+
+    async initFingerTable(flare?: SimpleNode) {
         for (let i = 0; i < M; i += 1) {
             this.fingerTable[i] = {
                 interval: [getFingerIndex(this.id, (i + 1)), getFingerIndex(this.id, i + 2)],
-                node: flare || this.encapsulateSelf(),
+                node: this.encapsulateSelf(),
             };
+        }
+
+        if (flare) {
+            const successor = await this.findSuccessor(this.fingerTable[0].interval[0], flare);
+            console.log(successor);
+            this.predecessor = await this.getPredecessor(successor);
+            this.fingerTable[0].node = successor;
+            // this.setPredecessor(this.encapsulateSelf(), successor);
+
+            for (let i = 0; i < (M - 1); i += 1) {
+                if (inRange(this.fingerTable[i + 1].interval[0], this.id, this.fingerTable[i].node.id, 'start')) {
+                    this.fingerTable[i + 1].node = this.fingerTable[i].node;
+                } else {
+                    this.fingerTable[i + 1].node = await this.findSuccessor(
+                        this.fingerTable[i + 1].interval[0],
+                        flare,
+                    );
+                }
+            }
+        }
+    }
+
+    async updateFingerTable(node: SimpleNode, i: number, executer?: SimpleNode): Promise<Boolean> {
+        if (!executer || executer.id === this.id) {
+            if (inRange(node.id, this.id, this.fingerTable[i].node.id, 'start')) {
+                this.fingerTable[i].node = node;
+                this.updateFingerTable(node, i, this.predecessor);
+            }
+
+            return true;
+        }
+
+        return this.execute('updateFingerTable', executer, node, i);
+    }
+
+    async updateOthers() {
+        for (let i = 0; i < M; i += 1) {
+            let index = this.id - (2 ** i);
+            if (index < 0) index += (2 ** M);
+
+            const prime = await this.findPredecessor(index);
+            this.updateFingerTable(this.encapsulateSelf(), i, prime);
         }
     }
 
     async execute(func: Functions, executer: SimpleNode, ...args: any[]): Promise<any> {
-        console.log(`${func}(${args}) @ ${executer.id}`);
+        // console.log(`${func}(${args}) @ ${executer.id}`);
 
         // Forward the execution request to the correct node and return its promise
         if (executer.id !== this.id) {
@@ -89,7 +173,10 @@ export default class Node {
         if (func === 'getSuccessor') return this.getSuccessor(args[0]);
         if (func === 'findPredecessor') return this.findPredecessor(args[0]);
         if (func === 'getPredecessor') return this.getPredecessor(args[0]);
+        if (func === 'setPredecessor') return this.setPredecessor(args[0]);
         if (func === 'closestPrecedingFinger') return this.closestPrecedingFinger(args[0]);
+        if (func === 'updateFingerTable') return this.updateFingerTable(args[0], args[1]);
+        if (func === 'notify') return this.notify(args[0]);
 
         return null;
     }
@@ -117,18 +204,31 @@ export default class Node {
         return this.execute('getPredecessor', node);
     }
 
-    async findPredecessor(id: number): Promise<SimpleNode> {
-        let prime = this.encapsulateSelf();
-        let primeSuccessor = await this.getSuccessor();
-
-        while (!inRange(id, prime.id, primeSuccessor.id, 'end')) {
-            if (prime.id === primeSuccessor.id) break;
-
-            prime = await this.execute('closestPrecedingFinger', prime, id);
-            primeSuccessor = await this.execute('getSuccessor', prime);
+    async setPredecessor(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
+        if (!executer || executer.id === this.id) {
+            this.predecessor = node;
+            return true;
         }
 
-        return prime;
+        return this.execute('setPredecessor', executer, node);
+    }
+
+    async findPredecessor(id: number, executer?: SimpleNode): Promise<SimpleNode> {
+        if (!executer || executer.id === this.id) {
+            let prime = this.encapsulateSelf();
+            let primeSuccessor = await this.getSuccessor();
+
+            while (!inRange(id, prime.id, primeSuccessor.id, 'end')) {
+                if (prime.id === primeSuccessor.id) break;
+
+                prime = await this.execute('closestPrecedingFinger', prime, id);
+                primeSuccessor = await this.execute('getSuccessor', prime);
+            }
+
+            return prime;
+        }
+
+        return this.execute('findPredecessor', executer, id);
     }
 
     closestPrecedingFinger(id: number): SimpleNode {
@@ -175,54 +275,18 @@ export default class Node {
         });
     }
 
-    // async registerTo(target: SimpleNode) {
-    //     await new Promise((resolve, reject) => {
-    //         const fallback = setTimeout(
-    // eslint-disable-next-line max-len
-    //             () => reject(new Error(`Register timed out for target ${target.address}:${target.port}.`)),
-    //             2000,
-    //         );
+    startLoop() {
+        if (!this.loop) {
+            this.loop = setInterval(async () => {
+                await this.stabilize();
+                await this.fixFingers();
+            }, 1000);
+        }
+    }
 
-    //         this.network.send(target, 'update', {
-    //             resolve: (data?: any) => {
-    //                 clearTimeout(fallback);
-    //                 resolve(data);
-    //             },
-    //             reject,
-    //         },
-    //         { update: 'add', node: this.encapsulateSelf() });
-    //     })
-    //         .then(() => {
-    //             // this.roster.push(target);
-    //         })
-    //         .catch((error) => console.error(error));
-    // }
-
-    // async notifyOthers(update: 'add' | 'remove', node: SimpleNode) {
-    //     const outbound: Promise<any>[] = [];
-
-    //     this.roster.forEach((target) => {
-    //         if (target.node.hash === node.hash) return;
-
-    //         outbound.push(new Promise((resolve, reject) => {
-    //             this.network.send(target.node, 'update', { resolve, reject }, { update, node });
-    //         }));
-    //     });
-
-    //     return Promise.all(outbound);
-    // }
-
-    // sync() {
-    //     this.fingerTable.forEach((entry) => {
-    //         this.ping(entry.node)
-    //             .then(() => {
-    //                 this.notifyOthers('add', entry.node);
-    //             })
-    //             .catch(() => {
-    //                 this.notifyOthers('remove', entry.node);
-    //             });
-    //     });
-    // }
+    endLoop() {
+        if (this.loop) clearInterval(this.loop);
+    }
 
     async terminate() {
         console.log('Terminating the node...');
