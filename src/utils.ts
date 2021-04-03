@@ -25,25 +25,25 @@ export function inRange(index: number, start: number, end: number, include: 'sta
     switch (include) {
     case 'start':
         if (start < end) return (start <= index && index < end);
-        if (start > end) return !(start <= index && index < end);
+        if (start > end) return (start <= index || index < end);
         if (start === end) return (index === end);
         break;
 
     case 'end':
         if (start < end) return (start < index && index <= end);
-        if (start > end) return !(start < index && index <= end);
+        if (start > end) return (start < index || index <= end);
         if (start === end) return (index === end);
         break;
 
     case 'both':
         if (start < end) return (start <= index && index <= end);
-        if (start > end) return !(start <= index && index <= end);
+        if (start > end) return (start <= index || index <= end);
         if (start === end) return (index === end);
         break;
 
     case 'none':
         if (start < end) return (start < index && index < end);
-        if (start > end) return !(start < index && index < end);
+        if (start > end) return (start < index || index < end);
         if (start === end) return (index !== end);
         break;
 
