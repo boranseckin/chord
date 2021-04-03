@@ -14,7 +14,7 @@ interface ResponsePromise {
     reject: Function;
 }
 
-type MessageType = 'ping' | 'response' | 'message' | 'command' | 'update';
+type MessageType = 'ping' | 'response' | 'message' | 'command';
 
 interface Message {
     sender: SimpleNode;
@@ -78,29 +78,14 @@ export default class Network {
             responseData = { result: true };
             break;
 
-        case 'response':
-            this.respondToPromise(promiseId, data);
+        case 'command':
+            responseData = {
+                result: await this.node.execute(data.function, reciever, ...data.args),
+            };
             break;
 
-        case 'update':
-            if (data.update === 'add') {
-                if (!this.node.roster.find((e) => e.id === data.node.id)) {
-                    this.node.ping(data.node)
-                        .then(() => {
-                            this.node.roster.push(data.node);
-                        })
-                        .catch((error) => console.error(error));
-                }
-            } else if (data.update === 'remove') {
-                this.node.ping(data.node)
-                    .then(() => {
-                        if (process.env.VERBOSE) console.error(`${data.node.id} is alive, not removing!`);
-                    })
-                    .catch(() => {
-                        this.node.roster = this.node.roster.filter((e) => e.id !== data.node.id);
-                    });
-            }
-            responseData = { result: true };
+        case 'response':
+            this.respondToPromise(promiseId, data);
             break;
 
         default:
@@ -183,9 +168,11 @@ export default class Network {
 
     respondToPromise(promiseId: string, data: any) {
         if (data.result) {
-            this.promises[promiseId].resolve(data);
-        } else {
+            this.promises[promiseId].resolve(data.result);
+        } else if (data.error) {
             this.promises[promiseId].reject(data.error);
+        } else {
+            this.promises[promiseId].reject(data);
         }
         delete this.promises[promiseId];
     }
