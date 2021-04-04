@@ -77,7 +77,9 @@ export default class Node {
 
     async stabilize() {
         const prime = await this.getPredecessor(this.fingerTable[0].node);
+
         if (inRange(prime.id, this.id, this.fingerTable[0].node.id, 'none')) {
+            console.log(`Successor changed ${this.fingerTable[0].node.id} -> ${prime.id}`);
             this.fingerTable[0].node = prime;
         }
 
@@ -164,7 +166,18 @@ export default class Node {
         // Forward the execution request to the correct node and return its promise
         if (executer.id !== this.id) {
             return new Promise((resolve, reject) => {
-                this.network.send(executer, 'command', { resolve, reject }, { function: func, args });
+                const fallback = setTimeout(
+                    () => reject(new Error(`Execution of ${func} timed out for target ${executer.address}:${executer.port}.`)),
+                    2000,
+                );
+
+                this.network.send(executer, 'command', {
+                    resolve: (data?: any) => {
+                        clearTimeout(fallback);
+                        resolve(data);
+                    },
+                    reject,
+                }, { function: func, args });
             });
         }
 
