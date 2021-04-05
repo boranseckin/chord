@@ -1,7 +1,14 @@
 /* eslint-disable no-await-in-loop */
 
 import Network from './network';
-import { getFingerIndex, hash, inRange } from './utils';
+import {
+    getFingerIndex,
+    hash,
+    inRange,
+    isNull,
+    isSame,
+    NULL_NODE,
+} from './utils';
 
 export const M = 3; // identifier length
 
@@ -76,22 +83,91 @@ export default class Node {
     }
 
     async stabilize() {
+        let isSuccessorOK = await this.checkSuccessor();
+        let isPredecessorOK = await this.checkPredecessor();
+
+        // Successor is not responding, try the finger table
+        if (!isSuccessorOK) {
+            // Try to find a finger after the successor
+            this.fingerTable.forEach(async (finger) => {
+                if (finger.node.id !== this.fingerTable[0].node.id) {
+                    await this.ping(finger.node).then(() => {
+                        this.fingerTable[0].node = finger.node;
+                        isSuccessorOK = true;
+                        // console.log(`Successor is changed to ${finger.node.id}`);
+                    }).catch(() => {});
+                }
+            });
+        }
+
+        // Finger table did not help. If the predecessor is alive, make it the successor
+        if (!isSuccessorOK && isPredecessorOK) {
+            this.fingerTable[0].node = this.predecessor;
+            isSuccessorOK = true;
+            // console.log(`Successor is changed to predecessor ${this.predecessor.id}`);
+        }
+
+        // No one is alive, either this node lost contact with the chord
+        // or this is the only node left in the chord.
+        if (!isSuccessorOK && !isPredecessorOK) {
+            this.fingerTable[0].node = this.encapsulateSelf();
+            isSuccessorOK = true;
+            this.predecessor = this.encapsulateSelf();
+            isPredecessorOK = true;
+            // console.log('Successor and predecessor are changed to self.');
+        }
+
+        // Successor is fine (or got replaced) but the predecessor is lost
+        // Use the finger table to replace the predecessor
+        if (!isPredecessorOK) {
+            this.fingerTable.slice().reverse().forEach(async (finger) => {
+                if (finger.node.id !== this.predecessor.id) {
+                    await this.ping(finger.node).then(() => {
+                        this.predecessor = finger.node;
+                        isPredecessorOK = true;
+                        // console.log(`Predecessor is changed to ${finger.node.id}`);
+                    }).catch(() => {});
+                }
+            });
+        }
+
+        // Finger table did not help. Make successor the predecessor
+        if (!isPredecessorOK) {
+            this.predecessor = this.fingerTable[0].node;
+            isPredecessorOK = true;
+            // console.log(`Predecessor is changed to successor ${this.fingerTable[0].node.id}`);
+        }
+
+        // Get the predecessor of the successor
         const prime = await this.getPredecessor(this.fingerTable[0].node);
 
-        if (inRange(prime.id, this.id, this.fingerTable[0].node.id, 'none')) {
-            console.log(`Successor changed ${this.fingerTable[0].node.id} -> ${prime.id}`);
-            this.fingerTable[0].node = prime;
-        }
+        // If we are the successor's predecessor, nothing has changed. Do nothing.
+        if (isSame(prime, this.encapsulateSelf())) return;
 
-        if (this.fingerTable[0].node.id !== this.id) {
-            await this.notify(this.encapsulateSelf(), this.fingerTable[0].node);
-        }
+        // If the successor's predecessor is changed, try to reach it
+        await this.ping(prime)
+            .then(async () => {
+                // New node must be between us and our "former" successor
+                if (inRange(prime.id, this.id, this.fingerTable[0].node.id, 'none')) {
+                    // console.log(`Successor changed: ${this.fingerTable[0].node.id} -> ${prime.id}`);
+                    this.fingerTable[0].node = prime;
+                }
+
+                // If the successor is not self, notify them about us
+                if (!isSame(this.fingerTable[0].node, this.encapsulateSelf())) {
+                    await this.notify(this.encapsulateSelf(), this.fingerTable[0].node);
+                }
+            }).catch((error) => {
+                // console.log(error);
+                // console.log('Cannot reach the new successor, not changed.');
+            });
     }
 
     async notify(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
         if (!executer || executer.id === this.id) {
             if (inRange(node.id, this.predecessor.id, this.id, 'none')) {
                 this.predecessor = node;
+                // console.log(`Notified, predecessor is changed to ${node.id}`);
             }
 
             return true;
@@ -101,11 +177,39 @@ export default class Node {
     }
 
     async fixFingers(index?: number) {
+        if (!await this.checkPredecessor()) return;
+
         const i = index || Math.floor(Math.random() * M);
         const node = await this.findSuccessor(this.fingerTable[i].interval[0]);
         if (this.fingerTable[i].node.id !== node.id) {
-            console.log(`Finger Fixed: [${i}] ${this.fingerTable[i].node.id} -> ${node.id}`);
+            // console.log(`Finger Fixed: [${i}] ${this.fingerTable[i].node.id} -> ${node.id}`);
             this.fingerTable[i].node = node;
+        }
+    }
+
+    async checkSuccessor(): Promise<Boolean> {
+        if (isNull(this.fingerTable[0].node)) return false;
+        if (isSame(this.fingerTable[0].node, this.encapsulateSelf())) return true;
+
+        try {
+            await this.ping(this.fingerTable[0].node);
+            return true;
+        } catch (error) {
+            // console.error(error);
+            return false;
+        }
+    }
+
+    async checkPredecessor(): Promise<Boolean> {
+        if (isNull(this.predecessor)) return false;
+        if (isSame(this.predecessor, this.encapsulateSelf())) return true;
+
+        try {
+            await this.ping(this.predecessor);
+            return true;
+        } catch (error) {
+            // console.error(error);
+            return false;
         }
     }
 
@@ -119,7 +223,6 @@ export default class Node {
 
         if (flare) {
             const successor = await this.findSuccessor(this.fingerTable[0].interval[0], flare);
-            console.log(successor);
             this.predecessor = await this.getPredecessor(successor);
             this.fingerTable[0].node = successor;
             // this.setPredecessor(this.encapsulateSelf(), successor);
@@ -161,14 +264,16 @@ export default class Node {
     }
 
     async execute(func: Functions, executer: SimpleNode, ...args: any[]): Promise<any> {
-        // console.log(`${func}(${args}) @ ${executer.id}`);
+        if (process.env.VERBOSE) console.log(`${func}(${args}) @ ${executer.id}`);
+
+        if (isNull(executer)) throw new Error(`Null node cannot execute ${func}.`);
 
         // Forward the execution request to the correct node and return its promise
         if (executer.id !== this.id) {
             return new Promise((resolve, reject) => {
                 const fallback = setTimeout(
                     () => reject(new Error(`Execution of ${func} timed out for target ${executer.address}:${executer.port}.`)),
-                    2000,
+                    1000,
                 );
 
                 this.network.send(executer, 'command', {
@@ -197,7 +302,16 @@ export default class Node {
     async getSuccessor(node?: SimpleNode): Promise<SimpleNode> {
         if (!node || node.id === this.id) return this.fingerTable[0].node;
 
-        return this.execute('getSuccessor', node);
+        let result: SimpleNode;
+
+        try {
+            result = await this.execute('getSuccessor', node);
+        } catch (error) {
+            // console.error(error);
+            result = NULL_NODE;
+        }
+
+        return result;
     }
 
     async findSuccessor(id: number, executer?: SimpleNode): Promise<SimpleNode> {
@@ -214,7 +328,16 @@ export default class Node {
     async getPredecessor(node?: SimpleNode): Promise<SimpleNode> {
         if (!node || node.id === this.id) return this.predecessor;
 
-        return this.execute('getPredecessor', node);
+        let result: SimpleNode;
+
+        try {
+            result = await this.execute('getPredecessor', node);
+        } catch (error) {
+            // console.error(error);
+            result = NULL_NODE;
+        }
+
+        return result;
     }
 
     async setPredecessor(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
@@ -255,9 +378,11 @@ export default class Node {
 
     async ping(target: SimpleNode) {
         return new Promise((resolve, reject) => {
+            if (isSame(target, this.encapsulateSelf())) resolve({ result: true, ping: true });
+
             const fallback = setTimeout(
                 () => reject(new Error(`Ping timed out for target ${target.address}:${target.port}.`)),
-                2000,
+                500,
             );
 
             this.network.send(target, 'ping', {
@@ -293,7 +418,7 @@ export default class Node {
             this.loop = setInterval(async () => {
                 await this.stabilize();
                 await this.fixFingers();
-            }, 1000);
+            }, 1500);
         }
     }
 
