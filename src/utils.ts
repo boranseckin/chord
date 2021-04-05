@@ -1,6 +1,24 @@
 import crypto from 'crypto';
 
-import { M } from './node';
+import { M, SimpleNode } from './node';
+
+export const NULL_NODE: SimpleNode = {
+    id: -1,
+    hash: 'FFFFFF',
+    address: '0.0.0.0',
+    port: 0,
+};
+
+export function isNull(x: any): Boolean {
+    return (x == null) || (x === NULL_NODE);
+}
+
+export function isSame(a: SimpleNode, b: SimpleNode): Boolean {
+    return (a.id === b.id)
+    && (a.hash === b.hash)
+    && (a.address === b.address)
+    && (a.port === b.port);
+}
 
 export function serialize(data: any): Buffer {
     return Buffer.from(JSON.stringify(data));
