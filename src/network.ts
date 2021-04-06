@@ -31,6 +31,11 @@ export default class Network {
     port: number;
     promises: { [id: string]: ResponsePromise } = {};
 
+    /**
+     * @param node A node to initialize a network class for.
+     * @param address An IPv4 address for the socket.
+     * @param port A port for the socket.
+     */
     constructor(
         node: Node,
         address?: string,
@@ -47,7 +52,12 @@ export default class Network {
         this.socket.on('message', (msg, rinfo) => this.messageHandler(msg, rinfo));
     }
 
-    async messageHandler(msg: Buffer, rinfo: dgram.RemoteInfo) {
+    /**
+     * Handles all the incoming trafic and forwards the messages to the correct methods.
+     * @param msg The data of the incoming message.
+     * @param rinfo Remote info for the incoming message.
+     */
+    async messageHandler(msg: Buffer, rinfo: dgram.RemoteInfo): Promise<void> {
         const message: Message = deserialize(msg);
         const {
             sender,
@@ -97,6 +107,10 @@ export default class Network {
         if (type !== 'response') await this.send(sender, 'response', promiseId, responseData);
     }
 
+    /**
+     * Binds this network class to the port.
+     * @returns A promise that will resolve to network infromation.
+     */
     async connect(): Promise<NetworkInfo> {
         return new Promise((resolve, reject) => {
             const fallback = setTimeout(() => {
@@ -115,6 +129,9 @@ export default class Network {
         });
     }
 
+    /**
+     * Unbinds this network class' socket.
+     */
     async disconnect(): Promise<void> {
         return new Promise((resolve, reject) => {
             const fallback = setTimeout(() => {
@@ -123,12 +140,24 @@ export default class Network {
 
             this.socket.close(() => {
                 clearTimeout(fallback);
-
                 resolve();
             });
         });
     }
 
+    /**
+     * Sends a network message to a node. To send a new message wrap this function with a
+     * promise and supply the resolve/reject functions as the promise argument.
+     * This method will save those functions locally and forward a promise id with the message.
+     *
+     * This method is also used by the message handler to respond to a previous message.
+     * Upon a response, either the resolve or reject function will be called with returning data.
+     * In that case, the promise id is supplied as the promise argument.
+     * @param reciever A node to send the message.
+     * @param type The message type: ('ping' | 'message' | 'command')
+     * @param promise A promise id or a set of resolve and reject functions for a promise.
+     * @param data Optional. Any data to be send with the message.
+     */
     async send(
         reciever: SimpleNode,
         type: MessageType,
@@ -163,10 +192,19 @@ export default class Network {
                     resolve();
                 },
             );
-        }).catch((error) => console.error(error));
+        }).catch((error) => { if (process.env.VERBOSE) console.error(error); });
     }
 
-    respondToPromise(promiseId: string, data: any) {
+    /**
+     * Used by the message handler to handle returning promises.
+     * If the result does not have an error in it resolves the promise
+     * otherwise, rejects it.
+     * @param promiseId An id for the promise.
+     * @param data A data to be supplied as the result of the promise.
+     */
+    respondToPromise(promiseId: string, data: any): void {
+        if (!this.promises[promiseId]) return;
+
         if (data.result) {
             this.promises[promiseId].resolve(data.result);
         } else if (data.error) {
@@ -177,6 +215,9 @@ export default class Network {
         delete this.promises[promiseId];
     }
 
+    /**
+     * Flushes the promise queue.
+     */
     async flush(): Promise<void> {
         await new Promise<void>((resolve) => {
             Object.keys(this.promises).forEach((promise) => delete this.promises[promise]);
