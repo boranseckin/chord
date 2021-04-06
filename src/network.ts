@@ -2,7 +2,7 @@ import dgram from 'dgram';
 import crypto from 'crypto';
 
 import Node, { SimpleNode } from './node';
-import { serialize, deserialize } from './utils';
+import { serialize, deserialize, print } from './utils';
 
 export interface NetworkInfo {
     address: string;
@@ -74,7 +74,7 @@ export default class Network {
         // Reciever must be the current user
         if (reciever.address !== this.address || reciever.port !== this.port) return;
 
-        if (process.env.VERBOSE) console.log(`[${this.node.id}] <${type} - ${promiseId}> from #${sender.id}`);
+        if (process.env.VERBOSE) print(`[${sender.id}]: [${promiseId} - ${data?.function ? data.function : type}]`);
 
         let responseData: any;
 
@@ -84,14 +84,21 @@ export default class Network {
             break;
 
         case 'message':
-            if (process.env.VERBOSE) console.log(`--> ${data.message}`);
+            print(`--> ${data.message}`);
             responseData = { result: true };
             break;
 
         case 'command':
-            responseData = {
-                result: await this.node.execute(data.function, reciever, ...data.args),
-            };
+            try {
+                responseData = {
+                    result: await this.node.execute(data.function, reciever, ...data.args),
+                };
+            } catch (error) {
+                responseData = {
+                    result: false,
+                    error,
+                };
+            }
             break;
 
         case 'response':
@@ -99,7 +106,7 @@ export default class Network {
             break;
 
         default:
-            if (process.env.VERBOSE) console.log('Unknown message type!');
+            if (process.env.VERBOSE) print('Unknown message type!');
             responseData = { result: false, error: 'Unknown message type!' };
             break;
         }
@@ -192,7 +199,7 @@ export default class Network {
                     resolve();
                 },
             );
-        }).catch((error) => { if (process.env.VERBOSE) console.error(error); });
+        }).catch((error) => { print(error); });
     }
 
     /**
