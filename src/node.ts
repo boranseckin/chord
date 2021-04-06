@@ -24,6 +24,7 @@ interface TableEntry {
     interval: [number, number];
 }
 
+// List of functions that can be executed remotely
 type Functions = (
     'getSuccessor' |
     'findSuccessor' |
@@ -43,6 +44,13 @@ export default class Node {
     fingerTable = new Array<TableEntry>(M);
     loop: ReturnType<typeof setInterval> | null = null;
 
+    /**
+     * @param id An identification number for the node.
+     * @param address An IPv4 address for the node.
+     * @param port A port for the node.
+     * @param flare Optional. A node to join from into a chord network.
+     * @param callback Optional. A callback function.
+     */
     constructor(
         id?: number,
         address?: string,
@@ -68,6 +76,9 @@ export default class Node {
             });
     }
 
+    /**
+     * Returns a simplified version of this node. This is used to serialize a node.
+     */
     encapsulateSelf(): SimpleNode {
         return {
             id: this.id,
@@ -77,6 +88,10 @@ export default class Node {
         };
     }
 
+    /**
+     * Initializes the finger table and start the stabilization loop.
+     * @param flare Optional. A node to join from into a chord network.
+     */
     async join(flare?: SimpleNode) {
         await this.initFingerTable(flare);
         this.startLoop();
@@ -163,19 +178,30 @@ export default class Node {
             });
     }
 
-    async notify(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
+    /**
+     * Used by other nodes to notify this node that they might have a new predecessor.
+     * @param node The potential predecessor node.
+     * @param executer The node that will execute this command locally.
+     * @returns A promise for the remote execution if any.
+     */
+    async notify(node: SimpleNode, executer?: SimpleNode): Promise<void> {
         if (!executer || executer.id === this.id) {
             if (inRange(node.id, this.predecessor.id, this.id, 'none')) {
                 this.predecessor = node;
                 // console.log(`Notified, predecessor is changed to ${node.id}`);
             }
 
-            return true;
+            return undefined;
         }
 
         return this.execute('notify', executer, node);
     }
 
+    /**
+     * Picks a random finger table entry and tries to replace it with a closer node.
+     * This function should be periodically run to fix the table of the node.
+     * @param index Optional. The finger table index to fix.
+     */
     async fixFingers(index?: number) {
         if (!await this.checkPredecessor()) return;
 
@@ -187,6 +213,10 @@ export default class Node {
         }
     }
 
+    /**
+     * Pings the successor of the node. Used to make sure the successor is alive.
+     * @returns A promise that will resolve to a boolean.
+     */
     async checkSuccessor(): Promise<Boolean> {
         if (isNull(this.fingerTable[0].node)) return false;
         if (isSame(this.fingerTable[0].node, this.encapsulateSelf())) return true;
@@ -200,6 +230,10 @@ export default class Node {
         }
     }
 
+    /**
+     * Pings the predecessor of the node. Used to make sure the predecessor is alive.
+     * @returns A promise that will resolve to a boolean.
+     */
     async checkPredecessor(): Promise<Boolean> {
         if (isNull(this.predecessor)) return false;
         if (isSame(this.predecessor, this.encapsulateSelf())) return true;
@@ -213,6 +247,13 @@ export default class Node {
         }
     }
 
+    /**
+     * Initializes the finger table with by finding the intervals of each finger
+     * and filling the fingers with correct nodes. If there is no flare, this node
+     * must be the only node of the network so each finger is itself.
+     * If there is a flare, it uses the flare to find its successor and fills the finger table.
+     * @param flare Optional. A node to join from into a chord network.
+     */
     async initFingerTable(flare?: SimpleNode) {
         for (let i = 0; i < M; i += 1) {
             this.fingerTable[i] = {
@@ -263,6 +304,14 @@ export default class Node {
         }
     }
 
+    /**
+     * Remotely executes a function on a different node and returns the result as a promise.
+     * Every request has a 1 second TTL, after that it will be automatically rejected.
+     * @param func The name of the function to execute.
+     * @param executer A node to execute the function.
+     * @param args Optional. Arguments to be supplied to the function.
+     * @returns A promise for the request.
+     */
     async execute(func: Functions, executer: SimpleNode, ...args: any[]): Promise<any> {
         if (process.env.VERBOSE) console.log(`${func}(${args}) @ ${executer.id}`);
 
@@ -271,6 +320,7 @@ export default class Node {
         // Forward the execution request to the correct node and return its promise
         if (executer.id !== this.id) {
             return new Promise((resolve, reject) => {
+                // Every request has a TTL
                 const fallback = setTimeout(
                     () => reject(new Error(`Execution of ${func} timed out for target ${executer.address}:${executer.port}.`)),
                     1000,
@@ -299,6 +349,12 @@ export default class Node {
         return null;
     }
 
+    /**
+     * Requests a node's immediate successor.
+     * If the node is self, returns the first entry of the finger table.
+     * @param node A node to do the query.
+     * @returns A promise that will resolve to a node.
+     */
     async getSuccessor(node?: SimpleNode): Promise<SimpleNode> {
         if (!node || node.id === this.id) return this.fingerTable[0].node;
 
@@ -314,6 +370,14 @@ export default class Node {
         return result;
     }
 
+    /**
+     * Finds the successor node of an id by first finding the predecessor of the id
+     * and then asking for its successor. If the id in question has a node, the successor
+     * will be that node.
+     * @param id An id to lookup.
+     * @param executer Optional. A node to execute this function remotely.
+     * @returns A node.
+     */
     async findSuccessor(id: number, executer?: SimpleNode): Promise<SimpleNode> {
         if (!executer || executer.id === this.id) {
             const prime = await this.findPredecessor(id);
@@ -325,6 +389,12 @@ export default class Node {
         return this.execute('findSuccessor', executer, id);
     }
 
+    /**
+     * Requests a node's immediate predecessor.
+     * If the node is self, returns the predecessor.
+     * @param node A node to do the query.
+     * @returns A promise that will resolve to a node.
+     */
     async getPredecessor(node?: SimpleNode): Promise<SimpleNode> {
         if (!node || node.id === this.id) return this.predecessor;
 
@@ -340,15 +410,33 @@ export default class Node {
         return result;
     }
 
-    async setPredecessor(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
+    /**
+     * Forcefully sets a node's predecessor.
+     * @param node A node to replace be the predecessor.
+     * @param executer A node to execute this command. If empty or self, executes locally.
+     * @returns A promise of the request.
+     */
+    async setPredecessor(node: SimpleNode, executer?: SimpleNode): Promise<void> {
         if (!executer || executer.id === this.id) {
             this.predecessor = node;
-            return true;
+
+            return undefined;
         }
 
         return this.execute('setPredecessor', executer, node);
     }
 
+    /**
+     * Finds the predecessor node of an id. When node executes find predecessor,
+     * it contacts a series of nodes moving forward around the Chord circle towards id.
+     * If node n contacts a node n'such that id falls between n' and the successor of n',
+     * find predecessor is done and returns n'. Otherwise node n asks n' for
+     * the node n' knows about that most closely precedes id.
+     * Thus the algorithm always makes progress towards the precedessor of id.
+     * @param id An id to lookup.
+     * @param executer Optional. A node to execute this function remotely.
+     * @returns A node.
+     */
     async findPredecessor(id: number, executer?: SimpleNode): Promise<SimpleNode> {
         if (!executer || executer.id === this.id) {
             let prime = this.encapsulateSelf();
@@ -367,6 +455,11 @@ export default class Node {
         return this.execute('findPredecessor', executer, id);
     }
 
+    /**
+     * Finds the closest node that is preceding the supplied id from the finger table.
+     * @param id An id to lookup.
+     * @returns A node.
+     */
     closestPrecedingFinger(id: number): SimpleNode {
         for (let i = (M - 1); i >= 0; i -= 1) {
             if (inRange(this.fingerTable[i].node.id, this.id, id, 'none')) {
@@ -376,6 +469,11 @@ export default class Node {
         return this.encapsulateSelf();
     }
 
+    /**
+     * Sends a ping message to a node. This function is used to check if a node is alive.
+     * @param target A node to send ping message.
+     * @returns A promise for the request.
+     */
     async ping(target: SimpleNode) {
         return new Promise((resolve, reject) => {
             if (isSame(target, this.encapsulateSelf())) resolve({ result: true, ping: true });
@@ -413,6 +511,9 @@ export default class Node {
         });
     }
 
+    /**
+     * Starts the loop for periodic stabilization.
+     */
     startLoop() {
         if (!this.loop) {
             this.loop = setInterval(async () => {
@@ -422,10 +523,16 @@ export default class Node {
         }
     }
 
+    /**
+     * Ends the loop for periodic stabilization.
+     */
     endLoop() {
         if (this.loop) clearInterval(this.loop);
     }
 
+    /**
+     * Terminates the node gracefully.
+     */
     async terminate() {
         console.log('Terminating the node...');
         await this.network.disconnect();
