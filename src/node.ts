@@ -32,7 +32,6 @@ type Functions = (
     'setPredecessor' |
     'findPredecessor' |
     'closestPrecedingFinger' |
-    'updateFingerTable' |
     'notify'
 );
 
@@ -97,6 +96,47 @@ export default class Node {
         this.startLoop();
     }
 
+    /**
+     * Initializes the finger table with by finding the intervals of each finger
+     * and filling the fingers with correct nodes. If there is no flare, this node
+     * must be the only node of the network so each finger is itself.
+     * If there is a flare, it uses the flare to find its successor and fills the finger table.
+     * @param flare Optional. A node to join from into a chord network.
+     */
+    async initFingerTable(flare?: SimpleNode) {
+        for (let i = 0; i < M; i += 1) {
+            this.fingerTable[i] = {
+                interval: [getFingerIndex(this.id, (i + 1)), getFingerIndex(this.id, i + 2)],
+                node: this.encapsulateSelf(),
+            };
+        }
+
+        if (flare) {
+            const successor = await this.findSuccessor(this.fingerTable[0].interval[0], flare);
+            this.predecessor = await this.getPredecessor(successor);
+            this.fingerTable[0].node = successor;
+            // this.setPredecessor(this.encapsulateSelf(), successor);
+
+            for (let i = 0; i < (M - 1); i += 1) {
+                if (inRange(this.fingerTable[i + 1].interval[0], this.id, this.fingerTable[i].node.id, 'start')) {
+                    this.fingerTable[i + 1].node = this.fingerTable[i].node;
+                } else {
+                    this.fingerTable[i + 1].node = await this.findSuccessor(
+                        this.fingerTable[i + 1].interval[0],
+                        flare,
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Tries to stabilize the node if somethings goes wrong.
+     * It checks the successor and the predecessor and replaces them if they
+     * are not responding anymore. Also checks for a better successor and if it finds
+     * a closer successor notfies it about itself.
+     * This method should be called periodically to keep this node correct.
+     */
     async stabilize() {
         let isSuccessorOK = await this.checkSuccessor();
         let isPredecessorOK = await this.checkPredecessor();
@@ -214,142 +254,6 @@ export default class Node {
     }
 
     /**
-     * Pings the successor of the node. Used to make sure the successor is alive.
-     * @returns A promise that will resolve to a boolean.
-     */
-    async checkSuccessor(): Promise<Boolean> {
-        if (isNull(this.fingerTable[0].node)) return false;
-        if (isSame(this.fingerTable[0].node, this.encapsulateSelf())) return true;
-
-        try {
-            await this.ping(this.fingerTable[0].node);
-            return true;
-        } catch (error) {
-            // console.error(error);
-            return false;
-        }
-    }
-
-    /**
-     * Pings the predecessor of the node. Used to make sure the predecessor is alive.
-     * @returns A promise that will resolve to a boolean.
-     */
-    async checkPredecessor(): Promise<Boolean> {
-        if (isNull(this.predecessor)) return false;
-        if (isSame(this.predecessor, this.encapsulateSelf())) return true;
-
-        try {
-            await this.ping(this.predecessor);
-            return true;
-        } catch (error) {
-            // console.error(error);
-            return false;
-        }
-    }
-
-    /**
-     * Initializes the finger table with by finding the intervals of each finger
-     * and filling the fingers with correct nodes. If there is no flare, this node
-     * must be the only node of the network so each finger is itself.
-     * If there is a flare, it uses the flare to find its successor and fills the finger table.
-     * @param flare Optional. A node to join from into a chord network.
-     */
-    async initFingerTable(flare?: SimpleNode) {
-        for (let i = 0; i < M; i += 1) {
-            this.fingerTable[i] = {
-                interval: [getFingerIndex(this.id, (i + 1)), getFingerIndex(this.id, i + 2)],
-                node: this.encapsulateSelf(),
-            };
-        }
-
-        if (flare) {
-            const successor = await this.findSuccessor(this.fingerTable[0].interval[0], flare);
-            this.predecessor = await this.getPredecessor(successor);
-            this.fingerTable[0].node = successor;
-            // this.setPredecessor(this.encapsulateSelf(), successor);
-
-            for (let i = 0; i < (M - 1); i += 1) {
-                if (inRange(this.fingerTable[i + 1].interval[0], this.id, this.fingerTable[i].node.id, 'start')) {
-                    this.fingerTable[i + 1].node = this.fingerTable[i].node;
-                } else {
-                    this.fingerTable[i + 1].node = await this.findSuccessor(
-                        this.fingerTable[i + 1].interval[0],
-                        flare,
-                    );
-                }
-            }
-        }
-    }
-
-    async updateFingerTable(node: SimpleNode, i: number, executer?: SimpleNode): Promise<Boolean> {
-        if (!executer || executer.id === this.id) {
-            if (inRange(node.id, this.id, this.fingerTable[i].node.id, 'start')) {
-                this.fingerTable[i].node = node;
-                this.updateFingerTable(node, i, this.predecessor);
-            }
-
-            return true;
-        }
-
-        return this.execute('updateFingerTable', executer, node, i);
-    }
-
-    async updateOthers() {
-        for (let i = 0; i < M; i += 1) {
-            let index = this.id - (2 ** i);
-            if (index < 0) index += (2 ** M);
-
-            const prime = await this.findPredecessor(index);
-            this.updateFingerTable(this.encapsulateSelf(), i, prime);
-        }
-    }
-
-    /**
-     * Remotely executes a function on a different node and returns the result as a promise.
-     * Every request has a 1 second TTL, after that it will be automatically rejected.
-     * @param func The name of the function to execute.
-     * @param executer A node to execute the function.
-     * @param args Optional. Arguments to be supplied to the function.
-     * @returns A promise for the request.
-     */
-    async execute(func: Functions, executer: SimpleNode, ...args: any[]): Promise<any> {
-        if (process.env.VERBOSE) console.log(`${func}(${args}) @ ${executer.id}`);
-
-        if (isNull(executer)) throw new Error(`Null node cannot execute ${func}.`);
-
-        // Forward the execution request to the correct node and return its promise
-        if (executer.id !== this.id) {
-            return new Promise((resolve, reject) => {
-                // Every request has a TTL
-                const fallback = setTimeout(
-                    () => reject(new Error(`Execution of ${func} timed out for target ${executer.address}:${executer.port}.`)),
-                    1000,
-                );
-
-                this.network.send(executer, 'command', {
-                    resolve: (data?: any) => {
-                        clearTimeout(fallback);
-                        resolve(data);
-                    },
-                    reject,
-                }, { function: func, args });
-            });
-        }
-
-        // Execute the command locally and return its promise
-        if (func === 'findSuccessor') return this.findSuccessor(args[0]);
-        if (func === 'getSuccessor') return this.getSuccessor(args[0]);
-        if (func === 'findPredecessor') return this.findPredecessor(args[0]);
-        if (func === 'getPredecessor') return this.getPredecessor(args[0]);
-        if (func === 'setPredecessor') return this.setPredecessor(args[0]);
-        if (func === 'closestPrecedingFinger') return this.closestPrecedingFinger(args[0]);
-        if (func === 'updateFingerTable') return this.updateFingerTable(args[0], args[1]);
-        if (func === 'notify') return this.notify(args[0]);
-
-        return null;
-    }
-
-    /**
      * Requests a node's immediate successor.
      * If the node is self, returns the first entry of the finger table.
      * @param node A node to do the query.
@@ -387,6 +291,23 @@ export default class Node {
         }
 
         return this.execute('findSuccessor', executer, id);
+    }
+
+    /**
+     * Pings the successor of the node. Used to make sure the successor is alive.
+     * @returns A promise that will resolve to a boolean.
+     */
+    async checkSuccessor(): Promise<Boolean> {
+        if (isNull(this.fingerTable[0].node)) return false;
+        if (isSame(this.fingerTable[0].node, this.encapsulateSelf())) return true;
+
+        try {
+            await this.ping(this.fingerTable[0].node);
+            return true;
+        } catch (error) {
+            // console.error(error);
+            return false;
+        }
     }
 
     /**
@@ -456,6 +377,23 @@ export default class Node {
     }
 
     /**
+     * Pings the predecessor of the node. Used to make sure the predecessor is alive.
+     * @returns A promise that will resolve to a boolean.
+     */
+    async checkPredecessor(): Promise<Boolean> {
+        if (isNull(this.predecessor)) return false;
+        if (isSame(this.predecessor, this.encapsulateSelf())) return true;
+
+        try {
+            await this.ping(this.predecessor);
+            return true;
+        } catch (error) {
+            // console.error(error);
+            return false;
+        }
+    }
+
+    /**
      * Finds the closest node that is preceding the supplied id from the finger table.
      * @param id An id to lookup.
      * @returns A node.
@@ -493,6 +431,12 @@ export default class Node {
         });
     }
 
+    /**
+     * Sends a text message to a node.
+     * @param target A node to send a text message.
+     * @param message A text message.
+     * @returns A promise for the request.
+     */
     async message(target: SimpleNode, message: String) {
         return new Promise((resolve, reject) => {
             const fallback = setTimeout(
@@ -509,6 +453,50 @@ export default class Node {
             },
             { message });
         });
+    }
+
+    /**
+     * Remotely executes a function on a different node and returns the result as a promise.
+     * Every request has a 1 second TTL, after that it will be automatically rejected.
+     * @param func The name of the function to execute.
+     * @param executer A node to execute the function.
+     * @param args Optional. Arguments to be supplied to the function.
+     * @returns A promise for the request.
+     */
+    async execute(func: Functions, executer: SimpleNode, ...args: any[]): Promise<any> {
+        if (process.env.VERBOSE) console.log(`${func}(${args}) @ ${executer.id}`);
+
+        if (isNull(executer)) throw new Error(`Null node cannot execute ${func}.`);
+
+        // Forward the execution request to the correct node and return its promise
+        if (executer.id !== this.id) {
+            return new Promise((resolve, reject) => {
+                // Every request has a TTL
+                const fallback = setTimeout(
+                    () => reject(new Error(`Execution of ${func} timed out for target ${executer.address}:${executer.port}.`)),
+                    1000,
+                );
+
+                this.network.send(executer, 'command', {
+                    resolve: (data?: any) => {
+                        clearTimeout(fallback);
+                        resolve(data);
+                    },
+                    reject,
+                }, { function: func, args });
+            });
+        }
+
+        // Execute the command locally and return its promise
+        if (func === 'findSuccessor') return this.findSuccessor(args[0]);
+        if (func === 'getSuccessor') return this.getSuccessor(args[0]);
+        if (func === 'findPredecessor') return this.findPredecessor(args[0]);
+        if (func === 'getPredecessor') return this.getPredecessor(args[0]);
+        if (func === 'setPredecessor') return this.setPredecessor(args[0]);
+        if (func === 'closestPrecedingFinger') return this.closestPrecedingFinger(args[0]);
+        if (func === 'notify') return this.notify(args[0]);
+
+        return null;
     }
 
     /**
