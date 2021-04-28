@@ -254,6 +254,8 @@ export default class Node {
     async fixFingers(index?: number) {
         if (!await this.checkPredecessor()) return;
 
+        if (index && (index < 0 || index > M - 1)) return;
+
         const i = index || Math.floor(Math.random() * M);
         const node = await this.findSuccessor(this.fingerTable[i].interval[0]);
         if (this.fingerTable[i].node.id !== node.id) {

@@ -94,7 +94,7 @@ rl.on('line', async (line) => {
         break;
 
     case 'fix':
-        await node.fixFingers();
+        await node.fixFingers(Number(input[1]));
         break;
 
     case 'start':
