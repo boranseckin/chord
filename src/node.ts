@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop */
-
 import Network from './network';
 import {
     getFingerIndex,
