@@ -34,8 +34,11 @@ export function isSame(a: SimpleNode, b: SimpleNode): Boolean {
 export function print(...x: any) {
     readline.clearLine(process.stdout, 0);
     readline.cursorTo(process.stdout, 0);
+
     console.log(...x);
+
     rl.prompt();
+    // Ctrl + E -> Go to to end of line
     rl.write('', { ctrl: true, name: 'e' });
 }
 
