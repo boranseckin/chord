@@ -43,6 +43,13 @@ export function print(...x: any) {
 }
 
 /**
+ * Clear the stdout.
+ */
+export function clear() {
+    process.stdout.write('\u001b[2J\u001b[0;0H');
+}
+
+/**
  * Serializes a JSON object.
  * @param data A JSON object.
  * @returns A buffer of string.

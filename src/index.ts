@@ -1,7 +1,12 @@
 import readline from 'readline';
 
 import Node, { SimpleNode } from './node';
-import { hash, inRange, print } from './utils';
+import {
+    clear,
+    hash,
+    inRange,
+    print,
+} from './utils';
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -59,10 +64,12 @@ function askFlare(callback: CallableFunction) {
     });
 }
 
+clear();
+
 askQuestions(() => {
     askFlare(() => {
         node = new Node(id, address, port, flare, () => {
-            process.stdout.write('\u001b[2J\u001b[0;0H');
+            clear();
             rl.prompt();
         });
     });
