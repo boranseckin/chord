@@ -1,45 +1,112 @@
 import readline from 'readline';
 
-import Node from './node';
+import Node, { SimpleNode } from './node';
+import { hash, inRange, print } from './utils';
 
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: 'node> ',
+    completer: (line: string) => {
+        const completions = 'info suc pre finger stabilize fix start stop que flush ping msg range clear exit kill'.split(' ');
+        const hits = completions.filter((c) => c.startsWith(line));
+        return [hits, line];
+    },
 });
+export default rl;
 
-const id = Number(process.argv[2]) || undefined;
-const address = process.argv[3] || undefined;
-const port = Number(process.argv[4]) || undefined;
+let node: Node;
+let id: number | undefined;
+let address: string | undefined;
+let port: number | undefined;
+let flare: SimpleNode | undefined;
 
-const node = new Node(id, address, port, () => {
-    process.stdout.write('\u001b[2J\u001b[0;0H');
-    rl.prompt();
+function askQuestions(callback: CallableFunction) {
+    rl.question('ID: ', (qid) => {
+        rl.question('Address: ', (qaddress) => {
+            rl.question('Port: ', (qport) => {
+                id = Number(qid) || undefined;
+                address = qaddress || undefined;
+                port = Number(qport) || undefined;
+                callback();
+            });
+        });
+    });
+}
+
+function askFlare(callback: CallableFunction) {
+    rl.question('Join to an existing network? [y/n] ', (qisFlare) => {
+        if (qisFlare.toLowerCase() === 'y') {
+            rl.question('Flare ID: ', (qid) => {
+                rl.question('Flare Address: ', (qaddress) => {
+                    rl.question('Flare Port: ', (qport) => {
+                        flare = {
+                            id: Number(qid) || 0,
+                            hash: hash(`${qaddress}:${qport}`).slice(10, 16).toUpperCase() || 'FFFFFF',
+                            address: qaddress || '127.0.0.1',
+                            port: Number(qport) || 50000,
+                        };
+                        callback();
+                    });
+                });
+            });
+        } else if (qisFlare.toLowerCase() === 'n') {
+            flare = undefined;
+            callback();
+        } else {
+            askFlare(callback);
+        }
+    });
+}
+
+askQuestions(() => {
+    askFlare(() => {
+        node = new Node(id, address, port, flare, () => {
+            process.stdout.write('\u001b[2J\u001b[0;0H');
+            rl.prompt();
+        });
+    });
 });
 
 rl.on('line', async (line) => {
     const input = line.trim().split(' ');
     switch (input[0]) {
     case 'info':
-        console.log(node.encapsulateSelf());
-        console.log(node.predecessor);
-        console.log(node.fingerTable);
+        print(node.encapsulateSelf());
+        print(node.predecessor);
+        print(node.fingerTable);
         break;
 
     case 'suc':
-        console.log(await node.execute('findSuccessor', node.encapsulateSelf(), Number(input[1])));
+        print(await node.findSuccessor(Number(input[1])));
         break;
 
     case 'pre':
-        console.log(await node.execute('findPredecessor', node.encapsulateSelf(), Number(input[1])));
+        print(await node.findPredecessor(Number(input[1])));
         break;
 
     case 'finger':
-        console.log(node.closestPrecedingFinger(Number(input[1])));
+        print(node.closestPrecedingFinger(Number(input[1])));
+        break;
+
+    case 'stabilize':
+        await node.stabilize();
+        break;
+
+    case 'fix':
+        await node.fixFingers();
+        break;
+
+    case 'start':
+        node.startLoop();
+        break;
+
+    case 'stop':
+        node.endLoop();
         break;
 
     case 'que':
-        console.log(node.network.promises);
+        print(node.network.promises);
         break;
 
     case 'flush':
@@ -56,7 +123,7 @@ rl.on('line', async (line) => {
             })
                 .catch((error) => console.error(error));
         } else {
-            console.log('Ping requires 2 arguments!');
+            print('Ping requires 2 arguments!');
         }
         break;
 
@@ -70,7 +137,13 @@ rl.on('line', async (line) => {
             }, input[3])
                 .catch((error) => console.error(error));
         } else {
-            console.log('Message requires 3 arguments!');
+            print('Message requires 3 arguments!');
+        }
+        break;
+
+    case 'range':
+        if (input[4] === 'start' || input[4] === 'end' || input[4] === 'none' || input[4] === 'both') {
+            print(inRange(Number(input[1]), Number(input[2]), Number(input[3]), input[4]));
         }
         break;
 
@@ -99,7 +172,7 @@ rl.on('line', async (line) => {
         break;
 
     default:
-        console.log(`Unkown command: ${input}`);
+        print(`Unkown command: ${input}`);
         break;
     }
 
