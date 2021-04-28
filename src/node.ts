@@ -114,7 +114,7 @@ export default class Node {
             const successor = await this.findSuccessor(this.fingerTable[0].interval[0], flare);
             this.predecessor = await this.getPredecessor(successor);
             this.fingerTable[0].node = successor;
-            // this.setPredecessor(this.encapsulateSelf(), successor);
+            // this.setPredecessor(this.encapsulateSelf(), successor);  // legacy method
 
             for (let i = 0; i < (M - 1); i += 1) {
                 if (inRange(this.fingerTable[i + 1].interval[0], this.id, this.fingerTable[i].node.id, 'start')) {
@@ -473,7 +473,7 @@ export default class Node {
      * @returns A promise for the request.
      */
     async execute(func: Functions, executer: SimpleNode, ...args: any[]): Promise<any> {
-        if (process.env.VERBOSE) console.log(`${func}(${args}) @ ${executer.id}`);
+        if (process.env.VERBOSE) print(`${func}(${args}) @ ${executer.id}`);
 
         if (isNull(executer)) throw new Error(`Null node cannot execute ${func}.`);
 
@@ -517,6 +517,7 @@ export default class Node {
                 await this.stabilize();
                 await this.fixFingers();
             }, 2000);
+            print('Stabilization loop has been started.');
         }
     }
 
@@ -525,13 +526,14 @@ export default class Node {
      */
     endLoop() {
         if (this.loop) clearInterval(this.loop);
+        print('Stabilization loop has been ended.');
     }
 
     /**
      * Terminates the node gracefully.
      */
     async terminate() {
-        console.log('Terminating the node...');
+        print('Terminating the node...');
         await this.network.disconnect();
         process.exit(0);
     }
