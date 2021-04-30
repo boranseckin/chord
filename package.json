@@ -1,11 +1,17 @@
 {
   "name": "chord",
   "version": "1.0.0",
-  "description": "",
+  "description": "An implementation of Chord network using TypeScript",
   "main": "dist/index.js",
-  "keywords": [],
   "author": "Boran Seckin <me@boranseckin.com>",
   "license": "MIT",
+  "keywords": [
+    "scalable",
+    "p2p",
+    "chord",
+    "network",
+    "lookup-service"
+  ],
   "scripts": {
     "lint": "eslint . --ext .ts",
     "start": "node dist/index.js",
