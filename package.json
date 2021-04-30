@@ -1,10 +1,15 @@
 {
-  "name": "chord",
+  "name": "@boranseckin/chord",
   "version": "1.0.0",
   "description": "An implementation of Chord network using TypeScript",
   "main": "dist/index.js",
   "author": "Boran Seckin <me@boranseckin.com>",
   "license": "MIT",
+  "homepage": "https://github.com/boranseckin/chord#readme",
+  "repository": "github:boranseckin/chord",
+  "bin": {
+    "chord": "dist/index.js"
+  },
   "keywords": [
     "scalable",
     "p2p",
