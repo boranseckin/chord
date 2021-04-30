@@ -1,4 +1,7 @@
 # chord
+![npm (scoped)](https://img.shields.io/npm/v/@boranseckin/chord?style=for-the-badge)
+![Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=for-the-badge)
+
 A Scalable Peer-to-peer Lookup Service for Internet Applications
 
 This is an implementation of Chord network explained in this [paper](https://pdos.csail.mit.edu/papers/chord:sigcomm01/chord_sigcomm.pdf) using TypeScript. All the communication between nodes is handled using UDP datagram sockets and the code is written asynchronously using promises to facilitate the high traffic of requests. This project only uses pure NodeJS and is dependency-free.
