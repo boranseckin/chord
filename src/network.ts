@@ -19,7 +19,7 @@ type MessageType = 'ping' | 'response' | 'message' | 'command';
 
 interface Message {
     sender: SimpleNode;
-    reciever: SimpleNode;
+    receiver: SimpleNode;
     type: MessageType;
     promiseId: string;
     data: any;
@@ -62,7 +62,7 @@ export default class Network {
         const message: Message = deserialize(msg);
         const {
             sender,
-            reciever,
+            receiver,
             type,
             promiseId,
             data,
@@ -72,8 +72,8 @@ export default class Network {
         if (rinfo.address === this.address && rinfo.port === this.port) return;
         if (rinfo.address !== sender.address || rinfo.port !== sender.port) return;
 
-        // Reciever must be the current user
-        if (reciever.address !== this.address || reciever.port !== this.port) return;
+        // Receiver must be the current user
+        if (receiver.address !== this.address || receiver.port !== this.port) return;
 
         if (process.env.VERBOSE) print(`[${sender.id}]: [${promiseId} - ${data?.function ? data.function : type}]`);
 
@@ -92,7 +92,7 @@ export default class Network {
         case 'command':
             try {
                 responseData = {
-                    result: await this.node.execute(data.function, reciever, ...data.args),
+                    result: await this.node.execute(data.function, receiver, ...data.args),
                 };
             } catch (error) {
                 responseData = {
@@ -161,13 +161,13 @@ export default class Network {
      * This method is also used by the message handler to respond to a previous message.
      * Upon a response, either the resolve or reject function will be called with returning data.
      * In that case, the promise id is supplied as the promise argument.
-     * @param reciever A node to send the message.
+     * @param receiver A node to send the message.
      * @param type The message type: ('ping' | 'message' | 'command')
      * @param promise A promise id or a set of resolve and reject functions for a promise.
      * @param data Optional. Any data to be send with the message.
      */
     async send(
-        reciever: SimpleNode,
+        receiver: SimpleNode,
         type: MessageType,
         promise: ResponsePromise | string,
         data?: any,
@@ -185,7 +185,7 @@ export default class Network {
 
             const message: Message = {
                 sender: this.node.encapsulateSelf(),
-                reciever,
+                receiver,
                 type,
                 promiseId: outgoingPromise,
                 data,
@@ -193,8 +193,8 @@ export default class Network {
 
             this.socket.send(
                 serialize(message),
-                reciever.port,
-                reciever.address,
+                receiver.port,
+                receiver.address,
                 (sendErr) => {
                     if (sendErr) reject(sendErr);
                     resolve();
