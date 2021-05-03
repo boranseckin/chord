@@ -2,7 +2,8 @@ import dgram from 'dgram';
 import crypto from 'crypto';
 
 import Node, { SimpleNode } from './node';
-import { serialize, deserialize, print } from './utils';
+import print from './index';
+import { serialize, deserialize } from './utils';
 
 export interface NetworkInfo {
     address: string;

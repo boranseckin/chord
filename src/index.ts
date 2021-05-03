@@ -3,12 +3,7 @@
 import readline from 'readline';
 
 import Node, { SimpleNode } from './node';
-import {
-    clear,
-    hash,
-    inRange,
-    print,
-} from './utils';
+import { clear, hash, inRange } from './utils';
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -20,7 +15,20 @@ const rl = readline.createInterface({
         return [hits, line];
     },
 });
-export default rl;
+
+/**
+ * Prints to stdout without messing up the readline prompt.
+ */
+export default function print(...x: any) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+
+    console.log(...x);
+
+    rl.prompt();
+    // Ctrl + E -> Go to to end of line
+    rl.write('', { ctrl: true, name: 'e' });
+}
 
 let node: Node;
 let id: number | undefined;

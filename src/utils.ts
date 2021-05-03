@@ -1,8 +1,6 @@
 import crypto from 'crypto';
-import readline from 'readline';
 
 import { M, SimpleNode } from './node';
-import rl from './index';
 
 export const NULL_NODE: SimpleNode = {
     id: -1,
@@ -26,20 +24,6 @@ export function isSame(a: SimpleNode, b: SimpleNode): Boolean {
     && (a.hash === b.hash)
     && (a.address === b.address)
     && (a.port === b.port);
-}
-
-/**
- * Prints to stdout without messing up the readline prompt.
- */
-export function print(...x: any) {
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-
-    console.log(...x);
-
-    rl.prompt();
-    // Ctrl + E -> Go to to end of line
-    rl.write('', { ctrl: true, name: 'e' });
 }
 
 /**

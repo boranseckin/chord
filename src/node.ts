@@ -1,4 +1,5 @@
 import Network from './network';
+import print from './index';
 import {
     getFingerIndex,
     hash,
@@ -6,7 +7,6 @@ import {
     isNull,
     isSame,
     NULL_NODE,
-    print,
 } from './utils';
 
 export const M = 3; // identifier length
