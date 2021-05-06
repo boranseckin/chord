@@ -1,5 +1,4 @@
 import Network from './network';
-import print from './index';
 import {
     getFingerIndex,
     hash,
@@ -8,6 +7,8 @@ import {
     isSame,
     NULL_NODE,
 } from './utils';
+
+let print = console.log;
 
 export const M = 3; // identifier length
 
@@ -61,6 +62,11 @@ export default class Node {
         this.network = new Network(this, address, port);
 
         this.predecessor = flare || this.encapsulateSelf();
+
+        // Only import print from index if this is a CLI
+        if (process.env.isCLI?.toLowerCase() === 'true') {
+            print = require('./index').default;
+        }
 
         this.network.connect()
             .then(() => {

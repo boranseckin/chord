@@ -5,6 +5,8 @@ import readline from 'readline';
 import Node, { SimpleNode } from './node';
 import { clear, hash, inRange } from './utils';
 
+process.env.isCLI = 'true';
+
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,

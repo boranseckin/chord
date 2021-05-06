@@ -2,8 +2,14 @@ import dgram from 'dgram';
 import crypto from 'crypto';
 
 import Node, { SimpleNode } from './node';
-import print from './index';
 import { serialize, deserialize } from './utils';
+
+let print = console.log;
+
+// Only import print from index if this is a CLI
+if (process.env.isCLI?.toLowerCase() === 'true') {
+    print = require('./index').default;
+}
 
 export interface NetworkInfo {
     address: string;
