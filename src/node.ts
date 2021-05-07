@@ -32,7 +32,8 @@ type Functions = (
     'setPredecessor' |
     'findPredecessor' |
     'closestPrecedingFinger' |
-    'notify'
+    'notify' |
+    'getInfo'
 );
 
 export default class Node {
@@ -89,6 +90,15 @@ export default class Node {
             hash: this.hash,
             address: this.network.address,
             port: this.network.port,
+        };
+    }
+
+    getInfo() {
+        return {
+            node: this.encapsulateSelf(),
+            pre: this.predecessor,
+            suc: this.fingerTable[0].node,
+            finger: this.fingerTable,
         };
     }
 
@@ -510,6 +520,7 @@ export default class Node {
         if (func === 'setPredecessor') return this.setPredecessor(args[0]);
         if (func === 'closestPrecedingFinger') return this.closestPrecedingFinger(args[0]);
         if (func === 'notify') return this.notify(args[0]);
+        if (func === 'getInfo') return this.getInfo();
 
         return null;
     }
