@@ -362,11 +362,11 @@ export default class Node {
      * @param executer A node to execute this command. If empty or self, executes locally.
      * @returns A promise of the request.
      */
-    async setPredecessor(node: SimpleNode, executer?: SimpleNode): Promise<void> {
+    async setPredecessor(node: SimpleNode, executer?: SimpleNode): Promise<Boolean> {
         if (!executer || executer.id === this.id) {
             this.predecessor = node;
 
-            return undefined;
+            return true;
         }
 
         return this.execute('setPredecessor', executer, node);
@@ -439,7 +439,7 @@ export default class Node {
      */
     async ping(target: SimpleNode) {
         return new Promise((resolve, reject) => {
-            if (isSame(target, this.encapsulateSelf())) resolve({ result: true, ping: true });
+            if (isSame(target, this.encapsulateSelf())) resolve(true);
 
             const fallback = setTimeout(
                 () => reject(new Error(`Ping timed out for target ${target.address}:${target.port}.`)),
