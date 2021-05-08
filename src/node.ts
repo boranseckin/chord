@@ -552,6 +552,8 @@ export default class Node {
     async terminate() {
         print('Terminating the node...');
         await this.network.disconnect();
-        process.exit(0);
+        if (process.env.NODE_ENV !== 'test') {
+            process.exit(0);
+        }
     }
 }
