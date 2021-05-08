@@ -1,6 +1,8 @@
 os: linux
 dist: xenial
 language: node_js
+node_js:
+  - node
 env:
   - VERBOSE=true
 before_script:
