@@ -29,6 +29,7 @@ export function isSame(a: SimpleNode, b: SimpleNode): Boolean {
 /**
  * Clear the stdout.
  */
+/* istanbul ignore next */
 export function clear() {
     process.stdout.write('\u001b[2J\u001b[0;0H');
 }
@@ -90,25 +91,25 @@ export function inRange(
         if (start < end) return (start <= index && index < end);
         if (start > end) return (start <= index || index < end);
         if (start === end) return (index === end);
-        break;
+        /* istanbul ignore next */ break;
 
     case 'end':
         if (start < end) return (start < index && index <= end);
         if (start > end) return (start < index || index <= end);
         if (start === end) return (index === end);
-        break;
+        /* istanbul ignore next */ break;
 
     case 'both':
         if (start < end) return (start <= index && index <= end);
         if (start > end) return (start <= index || index <= end);
         if (start === end) return (index === end);
-        break;
+        /* istanbul ignore next */ break;
 
     case 'none':
         if (start < end) return (start < index && index < end);
         if (start > end) return (start < index || index < end);
         if (start === end) return (index !== end);
-        break;
+        /* istanbul ignore next */ break;
 
     default:
         break;
