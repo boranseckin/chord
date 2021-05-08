@@ -76,8 +76,7 @@ describe('Binding Network Classes', () => {
     });
 
     test('deos not bind to the network with incorrect address argument', async () => {
-        expect.assertions(1);
-        const network = new Network.default(node, '127.0.0.2');
+        const network = new Network.default(node, '1.1.1.1');
         node.network = network;
         await network.connect().catch((error) => {
             expect(error).toBeDefined();
