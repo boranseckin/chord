@@ -16,11 +16,17 @@ const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
 
 beforeAll(async () => {
     await new Promise((resolve) => {
-        xNode = new Node.default(2, '127.0.0.1', 50002, undefined, resolve);
+        xNode = new Node.default(2, '127.0.0.1', 50002, undefined, () => {
+            xNode.endLoop();
+            resolve();
+        });
     })
     
     await new Promise((resolve) => {
-        yNode = new Node.default(3, '127.0.0.1', 50003, undefined, resolve);
+        yNode = new Node.default(3, '127.0.0.1', 50003, undefined, () => {
+            yNode.endLoop();
+            resolve();
+        });
     })
 });
 
@@ -125,7 +131,9 @@ describe('Sending Pings', () => {
 afterAll(async () => {
     await xNode.network.disconnect();
     await yNode.network.disconnect();
+
+    jest.restoreAllMocks();
     
     // Wait for socket to close
-    await new Promise(resolve => setTimeout(() => resolve(), 50));
+    await new Promise(resolve => setTimeout(() => resolve(), 200));
 });
