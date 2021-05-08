@@ -152,10 +152,14 @@ export default class Network {
                 reject(new Error('Disconnect timed out.'));
             });
 
-            this.socket.close(() => {
-                clearTimeout(fallback);
-                resolve();
-            });
+            try {
+                this.socket.close(() => {
+                    clearTimeout(fallback);
+                    resolve();
+                });
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
