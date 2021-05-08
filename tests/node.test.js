@@ -207,6 +207,7 @@ describe('function setPredecessor', () => {
 
 afterAll(async () => {
     xNode.endLoop();
+    await xNode.network.flush();
     await xNode.terminate();
     await yNode.terminate();
     await new Promise(resolve => setTimeout(() => resolve(), 1000));
