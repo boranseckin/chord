@@ -8,6 +8,7 @@ let print = console.log;
 
 // Only import print from index if this is a CLI
 if (process.env.isCLI?.toLowerCase() === 'true') {
+    /* istanbul ignore next */
     print = require('./index').default;
 }
 
@@ -112,6 +113,7 @@ export default class Network {
             this.respondToPromise(promiseId, data);
             break;
 
+        /* istanbul ignore next */
         default:
             if (process.env.VERBOSE) print('Unknown message type!');
             responseData = { result: false, error: 'Unknown message type!' };

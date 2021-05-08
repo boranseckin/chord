@@ -66,6 +66,7 @@ export default class Node {
 
         // Only import print from index if this is a CLI
         if (process.env.isCLI?.toLowerCase() === 'true') {
+            /* istanbul ignore next */
             print = require('./index').default;
         }
 
@@ -553,6 +554,7 @@ export default class Node {
         print('Terminating the node...');
         await this.network.disconnect();
         if (process.env.NODE_ENV !== 'test') {
+            /* istanbul ignore next */
             process.exit(0);
         }
     }
