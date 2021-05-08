@@ -66,7 +66,7 @@ export function hash(data: string): string {
  * k must be between 1 and M exclusively.
  */
 export function getFingerIndex(id: number, k: number) {
-    if (k < 1 && k > M) return -1;
+    if (k < 1 || k > M) return -1;
 
     return (id + (2 ** (k - 1))) % (2 ** M);
 }
