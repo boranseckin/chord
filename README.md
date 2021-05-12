@@ -9,6 +9,8 @@ A Scalable Peer-to-peer Lookup Service for Internet Applications
 
 This is an implementation of Chord network explained in this [paper](https://pdos.csail.mit.edu/papers/chord:sigcomm01/chord_sigcomm.pdf) using TypeScript. All the communication between nodes is handled using UDP sockets and the code is written asynchronously using promises to facilitate the high traffic of requests. This project only uses pure NodeJS and is dependency-free.
 
+#### [Demo Video](https://youtu.be/tf_3W5z0N-E)
+
 ## Network
 In the network, nodes constantly communicate with each other to make sure that their version of the network is up to date. Moreover, Chord network requires nodes to execute functions for other nodes remotely. This remote execution is essential for the network since every node only knows a few other nodes and they require other nodes to perform actions like lookups where they cannot reach.
 
