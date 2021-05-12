@@ -1,7 +1,7 @@
 FROM node:current-alpine AS BUILD_IMAGE
 WORKDIR /usr/src/app
 
-COPY package*.json .
+COPY package*.json ./
 RUN npm install
 
 COPY . .
@@ -14,7 +14,7 @@ RUN apk add --no-cache curl jq;
 
 ENV DOCKER=true
 
-COPY --from=BUILD_IMAGE /usr/src/app/dist .
+COPY --from=BUILD_IMAGE /usr/src/app/dist ./
 RUN rm ./*.js.map
 
 COPY ./docker-start.sh .
