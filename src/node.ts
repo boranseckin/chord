@@ -563,6 +563,7 @@ export default class Node {
     }
 }
 
+/* istanbul ignore next */
 if (process.env.DOCKER === 'true') {
     let flare: SimpleNode | undefined;
 
