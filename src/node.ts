@@ -1,3 +1,6 @@
+import os from 'os';
+import dns from 'dns';
+
 import Network from './network';
 import {
     getFingerIndex,
@@ -557,5 +560,49 @@ export default class Node {
             /* istanbul ignore next */
             process.exit(0);
         }
+    }
+}
+
+/* istanbul ignore next */
+if (process.env.DOCKER === 'true') {
+    let flare: SimpleNode | undefined;
+
+    const {
+        CHORD_ID,
+        CHORD_ADDRESS,
+        CHORD_PORT,
+        CHORD_FLARE,
+        CHORD_FLARE_ADDRESS,
+        CHORD_FLARE_PORT,
+        CHORD_FLARE_ID,
+    } = process.env;
+
+    if (CHORD_FLARE === 'true') {
+        dns.lookup(CHORD_FLARE_ADDRESS!, (err, res) => {
+            if (err) print(err);
+
+            flare = {
+                id: Number(CHORD_FLARE_ID),
+                hash: hash(`${CHORD_FLARE_ADDRESS}:${Number(CHORD_FLARE_PORT)}`).slice(10, 16).toUpperCase(),
+                address: res,
+                port: Number(CHORD_FLARE_PORT),
+            };
+
+            const node = new Node(
+                Number(CHORD_ID),
+                CHORD_ADDRESS || os.networkInterfaces().eth0![0].address,
+                Number(CHORD_PORT),
+                flare,
+                () => print(node.encapsulateSelf()),
+            );
+        });
+    } else {
+        const node = new Node(
+            Number(CHORD_ID),
+            CHORD_ADDRESS || os.networkInterfaces().eth0![0].address,
+            Number(CHORD_PORT),
+            flare,
+            () => print(node.encapsulateSelf()),
+        );
     }
 }
