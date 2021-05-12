@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+    flare:
+        image: boranseckin/chord:latest
+        networks:
+            - chord-net
+        environment:
+            - CHORD_ID=0
+            - CHORD_PORT=50000
+            - CHORD_FLARE=false
+
+    node:
+        image: boranseckin/chord:latest
+        depends_on:
+            - "flare"
+        networks:
+            - chord-net
+        environment:
+            - CHORD_PORT=50000
+            - CHORD_FLARE=true
+            - CHORD_FLARE_ID=0
+            - CHORD_FLARE_ADDRESS=flare
+            - CHORD_FLARE_PORT=50000
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+
+    visualizer:
+        image: boranseckin/chord-visualizer:latest
+        networks:
+            - chord-net
+        environment:
+            - VIS_PORT=55555
+            - VIS_ANCHOR_ID=0
+            - VIS_ANCHOR_ADDRESS=flare
+            - VIS_ANCHOR_PORT=50000
+        ports:
+            - "8080:8080"
+
+networks:
+    chord-net:
+        driver: bridge
