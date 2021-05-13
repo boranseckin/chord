@@ -1,6 +1,15 @@
 /node_modules/
+/dist/*.js.map
 /docs/
 /src/
+/tests/
+/coverage/
 .eslintrc.json
 .gitignore
 tsconfig.json
+.travis.yml
+.dockerignore
+docker-compose.yml
+docker-start.sh
+Dockerfile
+jest.config.js
