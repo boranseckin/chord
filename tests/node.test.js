@@ -205,6 +205,50 @@ describe('function setPredecessor', () => {
     });
 });
 
+describe('stabilize', () => {
+    test('fix successor', async () => {
+        xNode.fingerTable[0].node = Utils.NULL_NODE;
+        await xNode.stabilize();
+    });
+
+    test('fix predecessor', async () => {
+        xNode.predecessor = Utils.NULL_NODE;
+        await xNode.fixFingers();
+        await xNode.stabilize();
+    });
+
+    test('fix successor and predecessor',  async () => {
+        xNode.fingerTable[0].node = Utils.NULL_NODE;
+        xNode.predecessor = Utils.NULL_NODE;
+        await xNode.stabilize();
+    });
+
+    test('fix successor without fingers',  async () => {
+        xNode.fingerTable.forEach((finger) => {
+            finger.node = Utils.NULL_NODE;
+        });
+        xNode.fingerTable[0].node = Utils.NULL_NODE;
+        await xNode.stabilize();
+    });
+
+    test('fix predecessor without fingers',  async () => {
+        xNode.fingerTable.forEach((finger) => {
+            finger.node = Utils.NULL_NODE;
+        });
+        xNode.predecessor = Utils.NULL_NODE;
+        await xNode.stabilize();
+    });
+
+    test('fix successor and predecessor without fingers',  async () => {
+        xNode.fingerTable.forEach((finger) => {
+            finger.node = Utils.NULL_NODE;
+        });
+        xNode.fingerTable[0].node = Utils.NULL_NODE;
+        xNode.predecessor = Utils.NULL_NODE;
+        await xNode.stabilize();
+    });
+});
+
 afterAll(async () => {
     xNode.endLoop();
     await xNode.network.flush();
