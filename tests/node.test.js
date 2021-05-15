@@ -80,9 +80,14 @@ test('function checkPredecessor', async () => {
 });
 
 test('function execute', async () => {
-    expect.assertions(3);
+    expect.assertions(4);
     
-    expect(await xNode.execute('none', xNode.encapsulateSelf())).toBeNull();
+    try {
+        await xNode.execute('none', xNode.encapsulateSelf())
+    } catch (error) {
+        expect(error).toBeDefined();
+        expect(error.message).toBe('Unkown command.');
+    }
 
     await xNode.execute('getInfo', Utils.NULL_NODE).catch((error) => {
         expect(error).toBeDefined();

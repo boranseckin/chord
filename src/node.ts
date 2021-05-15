@@ -526,7 +526,7 @@ export default class Node {
         if (func === 'notify') return this.notify(args[0]);
         if (func === 'getInfo') return this.getInfo();
 
-        return null;
+        throw new Error('Unkown command.');
     }
 
     /**
