@@ -108,6 +108,90 @@ describe('Destroying Network Classes', () => {
     });
 });
 
+describe('Message Handler', () => {
+    beforeEach(() => {
+        const network = new Network.default(node);
+        node.network = network;
+    });
+
+    test('return if rinfo is self', async () => {
+        const rinfo = {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            port: 50000,
+        };
+        node.network.messageHandler(Buffer.from('{}'), rinfo);
+    });
+
+    test('return if rinfo is not sender - address', async () => {
+        const msg = {
+            sender: {
+                address: '127.0.0.2',
+                port: 50001,
+            }
+        };
+        const rinfo = {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            port: 50001,
+        };
+        node.network.messageHandler(Buffer.from(JSON.stringify(msg)), rinfo);
+    });
+
+    test('return if rinfo is not sender - port', async () => {
+        const msg = {
+            sender: {
+                address: '127.0.0.1',
+                port: 50002,
+            }
+        };
+        const rinfo = {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            port: 50001,
+        };
+        node.network.messageHandler(Buffer.from(JSON.stringify(msg)), rinfo);
+    });
+
+    test('return if reciever is not self - address', async () => {
+        const msg = {
+            sender: {
+                address: '127.0.0.1',
+                port: 50001,
+            },
+            receiver: {
+                address: '127.0.0.2',
+                port: 50000,
+            },
+        };
+        const rinfo = {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            port: 50001,
+        };
+        node.network.messageHandler(Buffer.from(JSON.stringify(msg)), rinfo);
+    });
+
+    test('return if reciever is not self - port', async () => {
+        const msg = {
+            sender: {
+                address: '127.0.0.1',
+                port: 50001,
+            },
+            receiver: {
+                address: '127.0.0.1',
+                port: 50002,
+            },
+        };
+        const rinfo = {
+            address: '127.0.0.1',
+            family: 'IPv4',
+            port: 50001,
+        };
+        node.network.messageHandler(Buffer.from(JSON.stringify(msg)), rinfo);
+    });
+});
+
 afterEach(async () => {
     await node.network.disconnect().catch(() => {});
     delete node.network;
