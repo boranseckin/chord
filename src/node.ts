@@ -316,6 +316,8 @@ export default class Node {
             const prime = await this.findPredecessor(id);
             const primeSuccessor = await this.getSuccessor(prime);
 
+            if (isNull(primeSuccessor)) return prime;
+
             return primeSuccessor;
         }
 
