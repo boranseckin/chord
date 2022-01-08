@@ -2,7 +2,11 @@ os: linux
 dist: xenial
 language: node_js
 node_js:
-  - node
+  - 17
+  - 16
+  - 15
+  - 14
+  - 13
 env:
   - VERBOSE=true
 before_script:
