@@ -1,7 +1,8 @@
 os: linux
-dist: xenial
+dist: focal
 language: node_js
 node_js:
+  - 18
   - 17
   - 16
   - 15
@@ -15,7 +16,7 @@ before_script:
 script:
   - jest --runInBand --coverage --forceExit --silent
 after_success:
-  - codecov -f coverage/*.json
+  - bash <(curl -s https://codecov.io/bash)
 notifications:	
   email:	
     on_success: never	
