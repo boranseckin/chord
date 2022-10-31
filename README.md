@@ -2,7 +2,6 @@
 [![npm (scoped)](https://img.shields.io/npm/v/@boranseckin/chord?style=for-the-badge)](https://www.npmjs.com/package/@boranseckin/chord)
 ![Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=for-the-badge)
 [![Travis (.com)](https://img.shields.io/travis/com/boranseckin/chord?style=for-the-badge)](https://travis-ci.com/github/boranseckin/chord)
-[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/boranseckin/chord?style=for-the-badge)](https://hub.docker.com/r/boranseckin/chord)
 [![Codecov](https://img.shields.io/codecov/c/github/boranseckin/chord?style=for-the-badge&token=wq26EbilpW)](https://codecov.io/gh/boranseckin/chord)
 
 A Scalable Peer-to-peer Lookup Service for Internet Applications
